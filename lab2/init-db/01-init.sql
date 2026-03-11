@@ -1,53 +1,919 @@
--- Здания
-CREATE TABLE IF NOT EXISTS buildings AS 
-SELECT * FROM tmp_layer 
-WHERE building IS NOT NULL AND building != '';
-ALTER TABLE buildings DROP COLUMN IF EXISTS id;
-ALTER TABLE buildings ADD COLUMN id SERIAL PRIMARY KEY;
-CREATE INDEX IF NOT EXISTS idx_buildings_geom ON buildings USING GIST (geom);
+--
+-- PostgreSQL database dump
+--
 
--- Дороги 
-CREATE TABLE IF NOT EXISTS roads AS 
-SELECT * FROM tmp_layer 
-WHERE highway IS NOT NULL;
-ALTER TABLE roads DROP COLUMN IF EXISTS id;
-ALTER TABLE roads ADD COLUMN id SERIAL PRIMARY KEY;
-CREATE INDEX IF NOT EXISTS idx_roads_geom ON roads USING GIST (geom);
+-- Dumped from database version 16.4 (Debian 16.4-1.pgdg110+2)
+-- Dumped by pg_dump version 16.4 (Debian 16.4-1.pgdg110+2)
 
--- POI
-CREATE TABLE IF NOT EXISTS pois AS 
-SELECT * FROM tmp_layer 
-WHERE power IS NOT NULL OR railway IS NOT NULL OR barrier IS NOT NULL;
-ALTER TABLE pois DROP COLUMN IF EXISTS id;
-ALTER TABLE pois ADD COLUMN id SERIAL PRIMARY KEY;
-CREATE INDEX IF NOT EXISTS idx_pois_geom ON pois USING GIST (geom);
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- Name: ogr_system_tables; Type: SCHEMA; Schema: -; Owner: gisuser
+--
+
+CREATE SCHEMA ogr_system_tables;
 
 
+ALTER SCHEMA ogr_system_tables OWNER TO gisuser;
 
--- 1. Список таблиц
--- docker compose exec postgis psql -U gisuser -d gis -c "\dt"
+--
+-- Name: postgis; Type: EXTENSION; Schema: -; Owner: -
+--
 
--- 2. Primary Keys
--- docker compose exec postgis psql -U gisuser -d gis -c "
--- SELECT table_name, constraint_name 
--- FROM information_schema.table_constraints 
--- WHERE constraint_type = 'PRIMARY KEY' 
--- AND table_name IN ('buildings', 'roads', 'pois');
--- "
+CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public;
 
--- 3. Индексы
--- docker compose exec postgis psql -U gisuser -d gis -c "
--- SELECT indexname, tablename 
--- FROM pg_indexes 
--- WHERE schemaname = 'public' 
--- AND indexname LIKE 'idx_%';
--- "
 
--- 4. Количество записей
--- docker compose exec postgis psql -U gisuser -d gis -c "
--- SELECT 'buildings' as table_name, COUNT(*) FROM buildings
--- UNION ALL
--- SELECT 'roads', COUNT(*) FROM roads
--- UNION ALL
--- SELECT 'pois', COUNT(*) FROM pois;
--- "
+--
+-- Name: EXTENSION postgis; Type: COMMENT; Schema: -; Owner: 
+--
+
+COMMENT ON EXTENSION postgis IS 'PostGIS geometry and geography spatial types and functions';
+
+
+--
+-- Name: event_trigger_function_for_metadata(); Type: FUNCTION; Schema: ogr_system_tables; Owner: gisuser
+--
+
+CREATE FUNCTION ogr_system_tables.event_trigger_function_for_metadata() RETURNS event_trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    obj record;
+BEGIN
+  IF has_schema_privilege('ogr_system_tables', 'USAGE') THEN
+   IF has_table_privilege('ogr_system_tables.metadata', 'DELETE') THEN
+    FOR obj IN SELECT * FROM pg_event_trigger_dropped_objects()
+    LOOP
+        IF obj.object_type = 'table' THEN
+            DELETE FROM ogr_system_tables.metadata m WHERE m.schema_name = obj.schema_name AND m.table_name = obj.object_name;
+        END IF;
+    END LOOP;
+   END IF;
+  END IF;
+END;
+$$;
+
+
+ALTER FUNCTION ogr_system_tables.event_trigger_function_for_metadata() OWNER TO gisuser;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: metadata; Type: TABLE; Schema: ogr_system_tables; Owner: gisuser
+--
+
+CREATE TABLE ogr_system_tables.metadata (
+    id integer NOT NULL,
+    schema_name text NOT NULL,
+    table_name text NOT NULL,
+    metadata text
+);
+
+
+ALTER TABLE ogr_system_tables.metadata OWNER TO gisuser;
+
+--
+-- Name: metadata_id_seq; Type: SEQUENCE; Schema: ogr_system_tables; Owner: gisuser
+--
+
+CREATE SEQUENCE ogr_system_tables.metadata_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE ogr_system_tables.metadata_id_seq OWNER TO gisuser;
+
+--
+-- Name: metadata_id_seq; Type: SEQUENCE OWNED BY; Schema: ogr_system_tables; Owner: gisuser
+--
+
+ALTER SEQUENCE ogr_system_tables.metadata_id_seq OWNED BY ogr_system_tables.metadata.id;
+
+
+--
+-- Name: buildings; Type: TABLE; Schema: public; Owner: gisuser
+--
+
+CREATE TABLE public.buildings (
+    ogc_fid integer,
+    "timestamp" timestamp with time zone,
+    version character varying,
+    changeset character varying,
+    "user" character varying,
+    uid character varying,
+    "addr:city" character varying,
+    "addr:country" character varying,
+    "addr:district" character varying,
+    "addr:housenumber" character varying,
+    "addr:postcode" character varying,
+    "addr:region" character varying,
+    "addr:street" character varying,
+    admin_level character varying,
+    barrier character varying,
+    boundary character varying,
+    building character varying,
+    "building:levels" character varying,
+    circuits character varying,
+    "crossing:bell" character varying,
+    gauge character varying,
+    highway character varying,
+    house character varying,
+    landuse character varying,
+    name character varying,
+    "name:ja" character varying,
+    "name:ru" character varying,
+    "name:uk" character varying,
+    "natural" character varying,
+    place character varying,
+    power character varying,
+    railway character varying,
+    service character varying,
+    "source:addr" character varying,
+    type character varying,
+    voltage character varying,
+    wikidata character varying,
+    wikipedia character varying,
+    geom public.geometry(Geometry,4326),
+    id integer NOT NULL
+);
+
+
+ALTER TABLE public.buildings OWNER TO gisuser;
+
+--
+-- Name: buildings_id_seq; Type: SEQUENCE; Schema: public; Owner: gisuser
+--
+
+CREATE SEQUENCE public.buildings_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.buildings_id_seq OWNER TO gisuser;
+
+--
+-- Name: buildings_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gisuser
+--
+
+ALTER SEQUENCE public.buildings_id_seq OWNED BY public.buildings.id;
+
+
+--
+-- Name: pois; Type: TABLE; Schema: public; Owner: gisuser
+--
+
+CREATE TABLE public.pois (
+    ogc_fid integer,
+    "timestamp" timestamp with time zone,
+    version character varying,
+    changeset character varying,
+    "user" character varying,
+    uid character varying,
+    "addr:city" character varying,
+    "addr:country" character varying,
+    "addr:district" character varying,
+    "addr:housenumber" character varying,
+    "addr:postcode" character varying,
+    "addr:region" character varying,
+    "addr:street" character varying,
+    admin_level character varying,
+    barrier character varying,
+    boundary character varying,
+    building character varying,
+    "building:levels" character varying,
+    circuits character varying,
+    "crossing:bell" character varying,
+    gauge character varying,
+    highway character varying,
+    house character varying,
+    landuse character varying,
+    name character varying,
+    "name:ja" character varying,
+    "name:ru" character varying,
+    "name:uk" character varying,
+    "natural" character varying,
+    place character varying,
+    power character varying,
+    railway character varying,
+    service character varying,
+    "source:addr" character varying,
+    type character varying,
+    voltage character varying,
+    wikidata character varying,
+    wikipedia character varying,
+    geom public.geometry(Geometry,4326),
+    id integer NOT NULL
+);
+
+
+ALTER TABLE public.pois OWNER TO gisuser;
+
+--
+-- Name: pois_id_seq; Type: SEQUENCE; Schema: public; Owner: gisuser
+--
+
+CREATE SEQUENCE public.pois_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.pois_id_seq OWNER TO gisuser;
+
+--
+-- Name: pois_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gisuser
+--
+
+ALTER SEQUENCE public.pois_id_seq OWNED BY public.pois.id;
+
+
+--
+-- Name: roads; Type: TABLE; Schema: public; Owner: gisuser
+--
+
+CREATE TABLE public.roads (
+    ogc_fid integer,
+    "timestamp" timestamp with time zone,
+    version character varying,
+    changeset character varying,
+    "user" character varying,
+    uid character varying,
+    "addr:city" character varying,
+    "addr:country" character varying,
+    "addr:district" character varying,
+    "addr:housenumber" character varying,
+    "addr:postcode" character varying,
+    "addr:region" character varying,
+    "addr:street" character varying,
+    admin_level character varying,
+    barrier character varying,
+    boundary character varying,
+    building character varying,
+    "building:levels" character varying,
+    circuits character varying,
+    "crossing:bell" character varying,
+    gauge character varying,
+    highway character varying,
+    house character varying,
+    landuse character varying,
+    name character varying,
+    "name:ja" character varying,
+    "name:ru" character varying,
+    "name:uk" character varying,
+    "natural" character varying,
+    place character varying,
+    power character varying,
+    railway character varying,
+    service character varying,
+    "source:addr" character varying,
+    type character varying,
+    voltage character varying,
+    wikidata character varying,
+    wikipedia character varying,
+    geom public.geometry(Geometry,4326),
+    id integer NOT NULL
+);
+
+
+ALTER TABLE public.roads OWNER TO gisuser;
+
+--
+-- Name: roads_id_seq; Type: SEQUENCE; Schema: public; Owner: gisuser
+--
+
+CREATE SEQUENCE public.roads_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.roads_id_seq OWNER TO gisuser;
+
+--
+-- Name: roads_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gisuser
+--
+
+ALTER SEQUENCE public.roads_id_seq OWNED BY public.roads.id;
+
+
+--
+-- Name: tmp_layer; Type: TABLE; Schema: public; Owner: gisuser
+--
+
+CREATE TABLE public.tmp_layer (
+    ogc_fid integer NOT NULL,
+    "timestamp" timestamp with time zone,
+    version character varying,
+    changeset character varying,
+    "user" character varying,
+    uid character varying,
+    "addr:city" character varying,
+    "addr:country" character varying,
+    "addr:district" character varying,
+    "addr:housenumber" character varying,
+    "addr:postcode" character varying,
+    "addr:region" character varying,
+    "addr:street" character varying,
+    admin_level character varying,
+    barrier character varying,
+    boundary character varying,
+    building character varying,
+    "building:levels" character varying,
+    circuits character varying,
+    "crossing:bell" character varying,
+    gauge character varying,
+    highway character varying,
+    house character varying,
+    landuse character varying,
+    name character varying,
+    "name:ja" character varying,
+    "name:ru" character varying,
+    "name:uk" character varying,
+    "natural" character varying,
+    place character varying,
+    power character varying,
+    railway character varying,
+    service character varying,
+    "source:addr" character varying,
+    type character varying,
+    voltage character varying,
+    wikidata character varying,
+    wikipedia character varying,
+    id character varying,
+    geom public.geometry(Geometry,4326)
+);
+
+
+ALTER TABLE public.tmp_layer OWNER TO gisuser;
+
+--
+-- Name: tmp_layer_ogc_fid_seq; Type: SEQUENCE; Schema: public; Owner: gisuser
+--
+
+CREATE SEQUENCE public.tmp_layer_ogc_fid_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.tmp_layer_ogc_fid_seq OWNER TO gisuser;
+
+--
+-- Name: tmp_layer_ogc_fid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gisuser
+--
+
+ALTER SEQUENCE public.tmp_layer_ogc_fid_seq OWNED BY public.tmp_layer.ogc_fid;
+
+
+--
+-- Name: metadata id; Type: DEFAULT; Schema: ogr_system_tables; Owner: gisuser
+--
+
+ALTER TABLE ONLY ogr_system_tables.metadata ALTER COLUMN id SET DEFAULT nextval('ogr_system_tables.metadata_id_seq'::regclass);
+
+
+--
+-- Name: buildings id; Type: DEFAULT; Schema: public; Owner: gisuser
+--
+
+ALTER TABLE ONLY public.buildings ALTER COLUMN id SET DEFAULT nextval('public.buildings_id_seq'::regclass);
+
+
+--
+-- Name: pois id; Type: DEFAULT; Schema: public; Owner: gisuser
+--
+
+ALTER TABLE ONLY public.pois ALTER COLUMN id SET DEFAULT nextval('public.pois_id_seq'::regclass);
+
+
+--
+-- Name: roads id; Type: DEFAULT; Schema: public; Owner: gisuser
+--
+
+ALTER TABLE ONLY public.roads ALTER COLUMN id SET DEFAULT nextval('public.roads_id_seq'::regclass);
+
+
+--
+-- Name: tmp_layer ogc_fid; Type: DEFAULT; Schema: public; Owner: gisuser
+--
+
+ALTER TABLE ONLY public.tmp_layer ALTER COLUMN ogc_fid SET DEFAULT nextval('public.tmp_layer_ogc_fid_seq'::regclass);
+
+
+--
+-- Data for Name: metadata; Type: TABLE DATA; Schema: ogr_system_tables; Owner: gisuser
+--
+
+COPY ogr_system_tables.metadata (id, schema_name, table_name, metadata) FROM stdin;
+1	public	tmp_layer	<GDALMetadata>\n  <Metadata domain="NATIVE_DATA">\n    <MDI key="NATIVE_DATA">{ }</MDI>\n    <MDI key="NATIVE_MEDIA_TYPE">application/vnd.geo+json</MDI>\n  </Metadata>\n</GDALMetadata>\n
+\.
+
+
+--
+-- Data for Name: buildings; Type: TABLE DATA; Schema: public; Owner: gisuser
+--
+
+COPY public.buildings (ogc_fid, "timestamp", version, changeset, "user", uid, "addr:city", "addr:country", "addr:district", "addr:housenumber", "addr:postcode", "addr:region", "addr:street", admin_level, barrier, boundary, building, "building:levels", circuits, "crossing:bell", gauge, highway, house, landuse, name, "name:ja", "name:ru", "name:uk", "natural", place, power, railway, service, "source:addr", type, voltage, wikidata, wikipedia, geom, id) FROM stdin;
+7	2023-11-17 10:46:42+00	1	144133327	desk77	3417100	\N	\N	\N	9	\N	\N	улица Александровская Роща	\N	\N	\N	yes	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	ЕГРН	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000005BCF108E592D494019BA23AD42A54A4091CE650F592D494003F456B840A54A40717500C45D2D4940036A204C40A54A403B76AB425E2D49401A30ED4042A54A405BCF108E592D494019BA23AD42A54A40	1
+8	2023-11-17 10:46:42+00	1	144133327	desk77	3417100	\N	\N	\N	46Б	\N	\N	улица Александровская Роща	\N	\N	\N	yes	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	ЕГРН	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000D8D248F02B2D49404F9FD3E242A54A400DD29D712B2D494038D906EE40A54A4082380F27302D4940384FD08140A54A40B779E3A4302D49404F159D7642A54A40D8D248F02B2D49404F9FD3E242A54A40	2
+12	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	97	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000227D4919272D4940A9FB00A436A54A40D4DF0154272D494057F5A8AE32A54A400751AD742D2D49406F6589CE32A54A40E9ADCB3A2D2D4940C06BE1C336A54A40227D4919272D4940A9FB00A436A54A40	3
+13	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	98	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000D05C4CD8232D49404392B47636A54A40A97FB50F1E2D4940140E187F36A54A409D47C5FF1D2D49404B19DDE632A54A4059E432C9232D49407B9D79DE32A54A40D05C4CD8232D49404392B47636A54A40	4
+14	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	99	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000FF4701FD192D49403227C34C36A54A40C689AF76142D49407F202F5A36A54A4067536463142D4940F8D2CA7333A54A409F11B6E9192D4940AAD95E6633A54A40FF4701FD192D49403227C34C36A54A40	5
+15	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	100	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000B011D264102D4940A9CDEE7F36A54A40900B186E0A2D4940915D0E6036A54A409B711AA20A2D49407B9D79DE32A54A40BC77D498102D4940930D5AFE32A54A40B011D264102D4940A9CDEE7F36A54A40	6
+16	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	101	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000A9A10DC0062D494061AB5F4436A54A4036BDD584FE2C4940F66A364536A54A40A2FDFE83FE2C494052AE3ABC31A54A4014E236BF062D494052AE3ABC31A54A40A9A10DC0062D494061AB5F4436A54A40	7
+17	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	102	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000B58E05E0FA2C4940BB80971936A54A408A703898F22C494079BF1B1C36A54A403672DD94F22C494052AE3ABC31A54A406290AADCFA2C4940936FB6B931A54A40B58E05E0FA2C4940BB80971936A54A40	8
+18	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	96	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000003DBBD7A4362D4940431CEBE236A54A405B5EB9DE362D4940F21593ED32A54A40228F3B003D2D49400A86730D33A54A4005EC59C63C2D49405B8CCB0237A54A403DBBD7A4362D4940431CEBE236A54A40	9
+19	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	95	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000002CCF2802412D494049F3C7B436A54A40DF31E13C412D4940F8EC6FBF32A54A4011A38C5D472D4940105D50DF32A54A40F3FFAA23472D49406163A8D436A54A402CCF2802412D494049F3C7B436A54A40	10
+20	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	94	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000F23BF2AC492D4940F04BA20337A54A40A59EAAE7492D49409E454A0E33A54A40D70F5608502D4940B6B52A2E33A54A40B96C74CE4F2D494008BC822337A54A40F23BF2AC492D4940F04BA20337A54A40	11
+21	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	93	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000023CF3F0B532D4940A885371037A54A4041722145532D4940577FDF1A33A54A4073E3CC65592D494004AF963B33A54A40EAFFC12C592D4940C0F5173037A54A4023CF3F0B532D4940A885371037A54A40	12
+22	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	92	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000095511B8B5C2D4940FCF95BA736A54A40B3F4FCC45C2D4940ABF303B232A54A407A257FE6622D4940C263E4D132A54A405C829DAC622D4940146A3CC736A54A4095511B8B5C2D4940FCF95BA736A54A40	13
+23	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	91	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000F54E6095662D4940494FECFC36A54A4013F241CF662D4940F848940733A54A404563EDEF6C2D494010B9742733A54A4028C00BB66C2D494061BFCC1C37A54A40F54E6095662D4940494FECFC36A54A40	14
+24	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	90	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000061287167702D4940434AFD0637A54A407FCB52A1702D494087037C1233A54A40B13CFEC1762D49409E735C3233A54A4094991C88762D4940F079B42737A54A4061287167702D4940434AFD0637A54A40	15
+25	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	116	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000097900F7A362D4940615A2FE12BA54A4049F3C7B4362D49400F54D7EB27A54A407C6473D53C2D494027C4B70B28A54A405EC1919B3C2D494078CA0F012CA54A4097900F7A362D4940615A2FE12BA54A40	16
+26	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	117	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000BCBD5AA43F2D4940789CFDDC2BA54A40D9603CDE3F2D49402796A5E727A54A40A191BEFF452D49403F06860728A54A4083EEDCC5452D4940900CDEFC2BA54A40BCBD5AA43F2D4940789CFDDC2BA54A40	17
+27	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	118	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000B7515381492D49400DD29D712BA54A40D4F434BB492D4940BCCB457C27A54A400766E0DB4F2D4940D43B269C27A54A40E9C2FEA14F2D494025427E912BA54A40B7515381492D49400DD29D712BA54A40	18
+28	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	119	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000007052E284532D4940314C5C7D2BA54A4023B59ABF532D4940E045048827A54A40552646E0592D4940F8B5E4A727A54A40378364A6592D494049BC3C9D2BA54A407052E284532D4940314C5C7D2BA54A40	19
+29	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	120	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000776682E15C2D494055F42CAD2BA54A409509641B5D2D494003EED4B727A54A40C77A0F3C632D49401B5EB5D727A54A403E970403632D49406D640DCD2BA54A40776682E15C2D494055F42CAD2BA54A40	20
+30	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	121	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000004F52AA8E662D4940D27135B22BA54A4001B562C9662D4940816BDDBC27A54A4033260EEA6C2D494098DBBDDC27A54A4016832CB06C2D4940EAE115D22BA54A404F52AA8E662D4940D27135B22BA54A40	21
+31	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	122	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000AF6994E46F2D4940D243238E2BA54A40CD0C761E702D4940813DCB9827A54A40FF7D213F762D49402D6D82B927A54A40E1DA3F05762D49407E73DAAE2BA54A40AF6994E46F2D4940D243238E2BA54A40	22
+32	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	115	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000093F07332272D49404F4B62FF2BA54A40B093556C272D4940FD440A0A28A54A40E304018D2D2D494015B5EA2928A54A40C5611F532D2D494066BB421F2CA54A4093F07332272D49404F4B62FF2BA54A40	23
+33	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	114	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000D9791B9B1D2D494055223FD12BA54A40F71CFDD41D2D4940031CE7DB27A54A40298EA8F5232D4940B04B9EFC27A54A400BEBC6BB232D49406C921FF12BA54A40D9791B9B1D2D494055223FD12BA54A40	24
+34	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	113	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000000865D0BF132D49408AD9DCE22BA54A402508B2F9132D4940CE925BEE27A54A40ED38341B1A2D4940E6023C0E28A54A40CF9552E1192D4940370994032CA54A400865D0BF132D49408AD9DCE22BA54A40	25
+35	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	112	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000003664F2BC0A2D49400D8AE6012CA54A405407D4F60A2D4940BC838E0C28A54A401B385618112D4940D4F36E2C28A54A40FD9474DE102D494025FAC6212CA54A403664F2BC0A2D49400D8AE6012CA54A40	26
+36	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	111	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000A0675831012D4940B42A78C02BA54A40BE0A3A6B012D4940632420CB27A54A40F07BE58B072D49407A9400EB27A54A40D3D80352072D4940CC9A58E02BA54A40A0675831012D4940B42A78C02BA54A40	27
+37	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	142	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000227D4919272D494078094E7D20A54A403F202B53272D49402703F6871CA54A400751AD742D2D4940D432ADA81CA54A40E9ADCB3A2D2D49402539059E20A54A40227D4919272D494078094E7D20A54A40	28
+38	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	143	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000E555E7621D2D49405B947E6720A54A4098B89F9D1D2D4940098E26721CA54A40CA294BBE232D494021FE06921CA54A40AC866984232D494072045F8720A54A40E555E7621D2D49405B947E6720A54A40	29
+39	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	144	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000007E7B8D13152D494013CE137420A54A409C1E6F4D152D4940C2C7BB7E1CA54A40634FF16E1B2D4940DA379C9E1CA54A4045AC0F351B2D49402B3EF49320A54A407E7B8D13152D494013CE137420A54A40	30
+40	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	145	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000006B2FFDA60B2D494007C4358820A54A4089D2DEE00B2D4940B6BDDD921CA54A40BB438A01122D4940CE2DBEB21CA54A409EA0A8C7112D49401F3416A820A54A406B2FFDA60B2D494007C4358820A54A40	31
+41	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	141	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000003227C34C362D4940D168BCBE20A54A404FCAA486362D4940806264C91CA54A40823B50A73C2D49402D921BEA1CA54A4064986E6D3C2D49407E9873DF20A54A403227C34C362D4940D168BCBE20A54A40	32
+42	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	140	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000CDE0945E402D4940FB8B457820A54A4080434D99402D4940AA85ED821CA54A40B2B4F8B9462D4940C2F5CDA21CA54A4094111780462D494013FC259820A54A40CDE0945E402D4940FB8B457820A54A40	33
+43	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	139	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000B6099C114A2D494072045F8720A54A40D4AC7D4B4A2D494021FE06921CA54A40061E296C502D4940396EE7B11CA54A40E97A4732502D49408A743FA720A54A40B6099C114A2D494072045F8720A54A40	34
+44	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	138	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000EDFDFCAD532D4940F52A323A20A54A400BA1DEE7532D4940A424DA441CA54A40D2D160095A2D4940515491651CA54A40B42E7FCF592D4940A25AE95A20A54A40EDFDFCAD532D4940F52A323A20A54A40	35
+45	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	137	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000036012B2C5D2D49405B947E6720A54A4053A40C665D2D4940098E26721CA54A401AD58E87632D494021FE06921CA54A40FD31AD4D632D494072045F8720A54A4036012B2C5D2D49405B947E6720A54A40	36
+46	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	136	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000AE2CD159662D49404F2E7C3320A54A40CCCFB293662D4940FD27243E1CA54A40FE405EB46C2D49401598045E1CA54A40E09D7C7A6C2D4940679E5C5320A54A40AE2CD159662D49404F2E7C3320A54A40	37
+47	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	135	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000009150E916702D4940D20C987620A54A4044B3A151702D4940800640811CA54A4076244D72762D4940987620A11CA54A4058816B38762D4940E97C789620A54A409150E916702D4940D20C987620A54A40	38
+48	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	157	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000005BD48272362D49403C3E100F17A54A40797764AC362D4940EA37B81913A54A40ABE80FCD3C2D494002A8983913A54A408E452E933C2D494053AEF02E17A54A405BD48272362D49403C3E100F17A54A40	39
+49	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	158	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000000F18DAEF3F2D4940D630E82917A54A402DBBBB29402D4940852A903413A54A405F2C674A462D49409D9A705413A54A4041898510462D4940EEA0C84917A54A400F18DAEF3F2D4940D630E82917A54A40	40
+50	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	159	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000040D93972492D49402A2F432D17A54A405D7C1BAC492D4940D828EB3713A54A4090EDC6CC4F2D4940F098CB5713A54A40724AE5924F2D4940419F234D17A54A4040D93972492D49402A2F432D17A54A40	41
+51	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	160	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000058B4EF40532D4940005471E316A54A407657D17A532D4940AF4D19EE12A54A40A8C87C9B592D4940C7BDF90D13A54A408B259B61592D494018C4510317A54A4058B4EF40532D4940005471E316A54A40	42
+52	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	161	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000DCCFCE0E5D2D49407D2D9E3017A54A40FA72B0485D2D4940C1E61C3C13A54A40C1A3326A632D4940D856FD5B13A54A40A4005130632D49402A5D555117A54A40DCCFCE0E5D2D49407D2D9E3017A54A40	43
+53	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	162	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000608F8994662D494036AFEAAC16A54A4013F241CF662D4940E5A892B712A54A404563EDEF6C2D4940FC1873D712A54A4028C00BB66C2D49404E1FCBCC16A54A40608F8994662D494036AFEAAC16A54A40	44
+54	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	163	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000200BD121702D494018963FDF16A54A403EAEB25B702D4940C78FE7E912A54A40701F5E7C762D494073BF9E0A13A54A40E73B5343762D4940C5C5F6FF16A54A40200BD121702D494018963FDF16A54A40	45
+55	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	181	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000264BF784362D4940D03C258C0BA54A4043EED8BE362D49407F36CD9607A54A400B1F5BE03C2D494097A6ADB607A54A40ED7B79A63C2D4940E8AC05AC0BA54A40264BF784362D4940D03C258C0BA54A40	46
+56	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	180	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000000F18DAEF3F2D49406B2FFDA60BA54A402DBBBB29402D49401A29A5B107A54A405F2C674A462D4940329985D107A54A4041898510462D4940839FDDC60BA54A400F18DAEF3F2D49406B2FFDA60BA54A40	47
+57	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	179	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000F2DFCD64492D4940652A0EB10BA54A401083AF9E492D49401424B6BB07A54A4042F45ABF4F2D49402C9496DB07A54A40255179854F2D49407D9AEED00BA54A40F2DFCD64492D4940652A0EB10BA54A40	48
+58	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	178	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000D55F0A6A532D4940839FDDC60BA54A40F302ECA3532D4940329985D107A54A40257497C4592D4940490966F107A54A4008D1B58A592D49409B0FBEE60BA54A40D55F0A6A532D4940839FDDC60BA54A40	49
+59	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	177	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000003016E1815C2D49409B5775560BA54A404EB9C2BB5C2D49404A511D6107A54A40802A6EDC622D494061C1FD8007A54A4062878CA2622D4940B3C755760BA54A403016E1815C2D49409B5775560BA54A40	50
+60	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	176	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000001FFC1FBB662D4940D03C258C0BA54A403C9F01F5662D49407F36CD9607A54A4004D083166D2D49402C6684B707A54A40E62CA2DC6C2D49407D6CDCAC0BA54A401FFC1FBB662D4940D03C258C0BA54A40	51
+61	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	175	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000005C6B39E16F2D49407739DB920BA54A40790E1B1B702D49402633839D07A54A40413F9D3C762D49403EA363BD07A54A40239CBB02762D49408FA9BBB20BA54A405C6B39E16F2D49407739DB920BA54A40	52
+62	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	193	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000EA324635362D4940881F52C202A54A4008D6276F362D49403619FACCFEA44A40CF06AA903C2D49404E89DAECFEA44A40B263C8563C2D49409F8F32E202A54A40EA324635362D4940881F52C202A54A40	53
+63	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	194	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000621635F33F2D49404602B27C02A54A401579ED2D402D4940F5FB5987FEA44A4047EA984E462D49400D6C3AA7FEA44A402A47B714462D49405E72929C02A54A40621635F33F2D49404602B27C02A54A40	54
+64	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	195	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000075BEE9A7492D494046A68D3402A54A409361CBE1492D4940F59F353FFEA44A40C5D27602502D49400D10165FFEA44A40A82F95C84F2D49405E166E5402A54A4075BEE9A7492D494046A68D3402A54A40	55
+65	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	196	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000002EBF78AB532D49407C5D2B4602A54A404C625AE5532D49402B57D350FEA44A407FD305065A2D494042C7B370FEA44A40613024CC592D494094CD0B6602A54A402EBF78AB532D49407C5D2B4602A54A40	56
+66	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	197	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000048E2E5E95C2D49400B46257502A54A406585C7235D2D4940B93FCD7FFEA44A402CB64945632D4940D1AFAD9FFEA44A400F13680B632D494022B6059502A54A4048E2E5E95C2D49400B46257502A54A40	57
+67	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	198	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000FBC9181F662D49402E92D15C02A54A40196DFA58662D4940DD8B7967FEA44A404BDEA5796C2D49408ABB3088FEA44A402E3BC43F6C2D49404602B27C02A54A40FBC9181F662D49402E92D15C02A54A40	58
+68	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	199	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000079B2F6D26F2D4940FF3B478902A54A409755D80C702D4940AD35EF93FEA44A405E865A2E762D4940C5A5CFB3FEA44A4041E378F4752D494016AC27A902A54A4079B2F6D26F2D4940FF3B478902A54A40	59
+69	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	213	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000D39453F1352D494088307E1AF7A44A40F037352B362D4940362A2625F3A44A40B768B74C3C2D4940E359DD45F3A44A409AC5D5123C2D49409FA05E3AF7A44A40D39453F1352D494088307E1AF7A44A40	60
+70	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	212	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000086BE0523402D4940ABAA3C26F7A44A40A461E75C402D49405AA4E430F3A44A40D6D2927D462D49407214C550F3A44A40B82FB143462D4940C31A1D46F7A44A4086BE0523402D4940ABAA3C26F7A44A40	61
+71	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	211	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000016B6B0B8492D49407621B138F7A44A40335992F2492D4940241B5943F3A44A4066CA3D13502D4940D14A1064F3A44A4048275CD94F2D49408D919158F7A44A4016B6B0B8492D49407621B138F7A44A40	62
+72	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	210	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000000B8D710F532D494076F39E14F7A44A4029305349532D494024ED461FF3A44A405BA1FE69592D4940D11CFE3FF3A44A403EFE1C30592D49408D637F34F7A44A400B8D710F532D494076F39E14F7A44A40	63
+73	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	209	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000185E49F25C2D49404641F0F8F6A44A4036012B2C5D2D4940F53A9803F3A44A406872D64C632D49400DAB7823F3A44A404ACFF412632D49405EB1D018F7A44A40185E49F25C2D49404641F0F8F6A44A40	64
+74	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	208	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000C0C5D4A7662D4940B1AF2B1CF7A44A40DD68B6E1662D494060A9D326F3A44A40A59938036D2D49407819B446F3A44A4087F656C96C2D4940C91F0C3CF7A44A40C0C5D4A7662D4940B1AF2B1CF7A44A40	65
+75	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	207	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000EA533310702D4940E766C92DF7A44A4008F7144A702D494095607138F3A44A403A68C06A762D4940ADD05158F3A44A401DC5DE30762D4940FED6A94DF7A44A40EA533310702D4940E766C92DF7A44A40	66
+76	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	89	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000DC12149A7F2D4940C00FBD7B36A54A40FAB5F5D37F2D49406F09658632A54A402D27A1F4852D49401C391CA732A54A400F84BFBA852D4940D87F9D9B36A54A40DC12149A7F2D4940C00FBD7B36A54A40	67
+77	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	123	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000A7B79AD07F2D494025427E912BA54A40C45A7C0A802D4940D43B269C27A54A40F7CB272B862D4940ECAB06BC27A54A406EE81CF2852D49403DB25EB12BA54A40A7B79AD07F2D494025427E912BA54A40	68
+78	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	88	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000005B159799882D4940E4B78DAB36A54A4079B878D3882D494093B135B632A54A40AB2924F48E2D4940AA2116D632A54A408D8642BA8E2D4940FC276ECB36A54A405B159799882D4940E4B78DAB36A54A40	69
+79	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	124	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000012D32A9F8A2D4940DEA925C22BA54A4030760CD98A2D49408CA3CDCC27A54A4062E7B7F9902D4940A413AEEC27A54A404544D6BF902D4940F51906E22BA54A4012D32A9F8A2D4940DEA925C22BA54A40	70
+80	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	125	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000009C97D41A942D494090DECBD82BA54A40BA3AB654942D49403FD873E327A54A40EDAB61759A2D49405748540328A54A40CF08803B9A2D4940A84EACF82BA54A409C97D41A942D494090DECBD82BA54A40	71
+81	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	126	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000088552C59E2D4940D8A436CC2BA54A40262834FF9E2D4940869EDED627A54A405899DF1FA52D494033CE95F727A54A403BF6FDE5A42D494084D4EDEC2BA54A40088552C59E2D4940D8A436CC2BA54A40	72
+82	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	127	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000C185E1C8A82D4940A249BD022CA54A40DF28C302A92D49405143650D28A54A40129A6E23AF2D494068B3452D28A54A4089B663EAAE2D4940BAB99D222CA54A40C185E1C8A82D4940A249BD022CA54A40	73
+83	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	128	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000FD023054B42D4940A8209AD42BA54A401BA6118EB42D4940571A42DF27A54A404D17BDAEBA2D49406F8A22FF27A54A402F74DB74BA2D4940C0907AF42BA54A40FD023054B42D4940A8209AD42BA54A40	74
+84	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	87	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000976A0B74922D49406D11627836A54A40B50DEDAD922D49401C0B0A8332A54A407C3E6FCF982D4940337BEAA232A54A405F9B8D95982D49408581429836A54A40976A0B74922D49406D11627836A54A40	75
+85	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	86	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000002790C82D9C2D4940D8F5662F36A54A404533AA679C2D494087EF0E3A32A54A4077A45588A22D4940341FC65A32A54A405A01744EA22D4940F065474F36A54A402790C82D9C2D4940D8F5662F36A54A40	76
+86	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	85	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000001C959BA8A52D49404364A25236A54A403A387DE2A52D4940F25D4A5D32A54A400169FF03AC2D49400ACE2A7D32A54A40E4C51DCAAB2D49405BD4827236A54A401C959BA8A52D49404364A25236A54A40	77
+87	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	84	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000FF14D8ADAF2D49408BFCFA2136A54A401DB8B9E7AF2D49403AF6A22C32A54A40E4E83B09B62D4940E6255A4D32A54A40C7455ACFB52D4940A36CDB4136A54A40FF14D8ADAF2D49408BFCFA2136A54A40	78
+88	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	82	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000006C223317B82D494055736F3436A54A401F85EB51B82D4940046D173F32A54A4051F69672BE2D49401CDDF75E32A54A403453B538BE2D49406DE34F5436A54A406C223317B82D494055736F3436A54A40	79
+89	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	134	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000084296FEC7E2D4940BA1281EA1FA54A40A1CC50267F2D4940690C29F51BA54A4068FDD247852D4940153CE0151CA54A404B5AF10D852D49406742380B20A54A4084296FEC7E2D4940BA1281EA1FA54A40	80
+90	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	133	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000004FAF9465882D49409698C2DE1FA54A406D52769F882D494045926AE91BA54A409FC321C08E2D49405D024B091CA54A40812040868E2D4940AE08A3FE1FA54A404FAF9465882D49409698C2DE1FA54A40	81
+91	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	132	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000015A6947C912D49402B5899DF1FA54A40C7084DB7912D4940DA5141EA1BA54A40FA79F8D7972D49408681F80A1CA54A40DCD6169E972D4940D887500020A54A4015A6947C912D49402B5899DF1FA54A40	82
+92	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	131	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000001CE846FD9A2D494013E8B8BF1FA54A403A8B28379B2D4940C2E160CA1BA54A4001BCAA58A12D4940DA5141EA1BA54A40E318C91EA12D49402B5899DF1FA54A401CE846FD9A2D494013E8B8BF1FA54A40	83
+93	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	130	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000D0FD8B56A42D494073F0F1AE1FA54A40EDA06D90A42D494021EA99B91BA54A40B5D1EFB1AA2D4940395A7AD91BA54A40972E0E78AA2D49408B60D2CE1FA54A40D0FD8B56A42D494073F0F1AE1FA54A40	84
+94	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	129	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000358AF6C2AE2D49403D9578E51FA54A40532DD8FCAE2D4940EC8E20F01BA54A401A5E5A1EB52D494098BED7101CA54A40FDBA78E4B42D49405505590520A54A40358AF6C2AE2D49403D9578E51FA54A40	85
+95	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	164	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000008471265C7E2D49402A2F432D17A54A40A11408967E2D4940D828EB3713A54A40D485B3B6842D4940F098CB5713A54A40B6E2D17C842D4940419F234D17A54A408471265C7E2D49402A2F432D17A54A40	86
+96	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	165	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000097BDB6C8872D49400CBA731717A54A40B4609802882D4940BBB31B2213A54A407C911A248E2D494067E3D24213A54A405EEE38EA8D2D4940B9E92A3817A54A4097BDB6C8872D49400CBA731717A54A40	87
+97	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	166	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000098E60C7B902D49405FE6E03E17A54A404B49C5B5902D49400EE0884913A54A407DBA70D6962D49402650696913A54A4060178F9C962D49407756C15E17A54A4098E60C7B902D49405FE6E03E17A54A40	88
+98	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	167	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000023C55B42992D4940BFC0070A17A54A40D527147D992D49406DBAAF1413A54A400899BF9D9F2D4940852A903413A54A40EAF5DD639F2D4940D630E82917A54A4023C55B42992D4940BFC0070A17A54A40	89
+99	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	168	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000006B3E5354A22D4940D1CFD4EB16A54A4089E1348EA22D49407FC97CF612A54A40BC52E0AEA82D494097395D1613A54A409EAFFE74A82D4940E83FB50B17A54A406B3E5354A22D4940D1CFD4EB16A54A40	90
+100	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	169	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000A39410ACAA2D494071F5AD2017A54A4055F7C8E6AA2D494020EF552B13A54A4088687407B12D4940385F364B13A54A406AC592CDB02D494089658E4017A54A40A39410ACAA2D494071F5AD2017A54A40	91
+101	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	174	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000B3F5C2537E2D4940F4FE9A070BA54A40D198A48D7E2D4940A3F8421207A54A40040A50AE842D4940BB68233207A54A40E6666E74842D49400C6F7B270BA54A40B3F5C2537E2D4940F4FE9A070BA54A40	92
+102	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	173	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000CDEA1D6E872D4940D1E000440BA54A40EA8DFFA7872D49407FDAA84E07A54A40B2BE81C98D2D4940974A896E07A54A40941BA08F8D2D4940E850E1630BA54A40CDEA1D6E872D4940D1E000440BA54A40	93
+103	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	172	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000063015D45902D4940FA5FAE450BA54A4080A43E7F902D4940A959565007A54A4048D5C0A0962D4940C1C9367007A54A402A32DF66962D494012D08E650BA54A4063015D45902D4940FA5FAE450BA54A40	94
+104	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	171	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000FF4A9D36992D4940E8F4BC1B0BA54A40B1AD5571992D494097EE642607A54A40E41E01929F2D4940441E1C4707A54A40C67B1F589F2D49409524743C0BA54A40FF4A9D36992D4940E8F4BC1B0BA54A40	95
+105	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	170	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000A70E4D34A32D4940AD6642380BA54A40C4B12E6EA32D49405C60EA4207A54A40F722DA8EA92D494073D0CA6207A54A40D97FF854A92D4940C5D622580BA54A40A70E4D34A32D4940AD6642380BA54A40	96
+106	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	201	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000003DCED9A7882D4940DB65643502A54A40F03092E2882D49408A5F0C40FEA44A4022A23D038F2D4940A2CFEC5FFEA44A4004FF5BC98E2D4940F3D5445502A54A403DCED9A7882D4940DB65643502A54A40	97
+107	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	202	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000003834C060922D494070815F7E02A54A4056D7A19A922D49401F7B0789FEA44A4088484DBB982D494036EBE7A8FEA44A406BA56B81982D494088F13F9E02A54A403834C060922D494070815F7E02A54A40	98
+108	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	200	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000089E6A6727F2D4940A0D7E95102A54A40A78988AC7F2D49404ED1915CFEA44A406EBA0ACE852D4940FB00497DFEA44A4050172994852D49404C07A17202A54A4089E6A6727F2D4940A0D7E95102A54A40	99
+109	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	203	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000003869B429D2D49404C07A17202A54A40B5E8537D9D2D4940FB00497DFEA44A40E859FF9DA32D49401371299DFEA44A40CAB61D64A32D49406477819202A54A4003869B429D2D49404C07A17202A54A40	100
+110	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	110	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000007EB1529CFE2C4940C0BE8C182CA54A400BCD1A61F62C4940C0BE8C182CA54A400BCD1A61F62C4940B0C1679027A54A40E9F17B9BFE2C49401B02918F27A54A407EB1529CFE2C4940C0BE8C182CA54A40	101
+111	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	109	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000019E9A0A6F12C49406CC031152CA54A40A604696BE92C4940018008162CA54A401245926AE92C49405DC30C8D27A54A408429CAA5F12C49405DC30C8D27A54A4019E9A0A6F12C49406CC031152CA54A40	102
+112	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	146	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000F0479BF4082D494090C1E50C20A54A407D6363B9002D494090C1E50C20A54A40E8A38CB8002D4940EC04EA831BA54A405B88C4F3082D4940EC04EA831BA54A40F0479BF4082D494090C1E50C20A54A40	103
+113	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	147	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000096276B2FFD2C49402553AAE91FA54A40B8020AF5F42C4940BA1281EA1FA54A40234333F4F42C4940165685611BA54A4096276B2FFD2C4940165685611BA54A4096276B2FFD2C49402553AAE91FA54A40	104
+114	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	108	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000005B8D36D8E52C4940DD335C2E2CA54A40E8A8FE9CDD2C494072F3322F2CA54A40E8A8FE9CDD2C4940CE3637A627A54A405B8D36D8E52C4940CE3637A627A54A405B8D36D8E52C4940DD335C2E2CA54A40	105
+115	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	103	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E6100000010000000103000000010000000500000050DAC0C2EE2C494050E449D235A54A40DDF58887E62C4940E4A320D335A54A404936B286E62C494040E7244A31A54A40BB1AEAC1EE2C494040E7244A31A54A4050DAC0C2EE2C494050E449D235A54A40	106
+116	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	104	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000FD906DCFE22C4940D39453F135A54A408AAC3594DA2C4940D39453F135A54A40F5EC5E93DA2C4940C3972E6931A54A4068D196CEE22C49402ED8576831A54A40FD906DCFE22C4940D39453F135A54A40	107
+117	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	105	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000F85A2B35D62C4940F66A364536A54A408576F3F9CD2C4940F66A364536A54A408576F3F9CD2C4940E76D11BD31A54A40F85A2B35D62C494052AE3ABC31A54A40F85A2B35D62C4940F66A364536A54A40	108
+118	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	148	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E610000001000000010300000001000000050000008A00A777F12C4940731E04D31FA54A40181C6F3CE92C4940731E04D31FA54A40835C983BE92C4940CE61084A1BA54A40F640D076F12C4940CE61084A1BA54A408A00A777F12C4940731E04D31FA54A40	109
+119	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	107	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000F0BF95ECD82C494072F3322F2CA54A4046EA3D95D32C49408A35012B2CA54A4040E54E9FD32C4940F2B0F5B127A54A40EABAA6F6D82C4940DA6E27B627A54A40F0BF95ECD82C494072F3322F2CA54A40	110
+120	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	149	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0106000020E61000000100000001030000000100000005000000EA8FD552E52C4940D23AAA9A20A54A4040BA7DFBDF2C494055BDA19520A54A403AB58E05E02C4940BC38961C1CA54A40E48AE65CE52C4940A4F6C7201CA54A40EA8FD552E52C4940D23AAA9A20A54A40	111
+\.
+
+
+--
+-- Data for Name: pois; Type: TABLE DATA; Schema: public; Owner: gisuser
+--
+
+COPY public.pois (ogc_fid, "timestamp", version, changeset, "user", uid, "addr:city", "addr:country", "addr:district", "addr:housenumber", "addr:postcode", "addr:region", "addr:street", admin_level, barrier, boundary, building, "building:levels", circuits, "crossing:bell", gauge, highway, house, landuse, name, "name:ja", "name:ru", "name:uk", "natural", place, power, railway, service, "source:addr", type, voltage, wikidata, wikipedia, geom, id) FROM stdin;
+121	2021-12-16 05:28:36+00	6	114988044	lamax	1860634	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	1520	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	rail	spur	\N	\N	\N	\N	\N	0105000020E610000001000000010200000023000000EC81FBA6552C4940864E1949CCA34A40D06053E7512C494090B1248ADAA34A40650CBD0F512C49408C26BCA9EDA34A40071335875A2C4940BFFC0406FFA34A4094F2FF4F6A2C49407C94B65D0DA44A40784DA3247F2C4940DB5DB1D018A44A4076E8AA2F012D4940E63114C149A44A403BF0202C192D4940D52BC0D254A44A40B30A9B012E2D494045E4AA6862A44A4018BFDF1E3A2D49405C9F83786EA44A404A78E7F5CC2D49407B0F3C6304A54A402515D742DA2D494089C1B28817A54A40EBF76981E22D494008A5D4CA29A54A4066CBA8E8FE2D494004A337818EA54A40134FD1EC152E49401008CFDFDFA54A40116C01463C2E494072E0D57267A64A405F6633E25D2E494018192EBCDCA64A4017FF2DB76A2E4940F58E09E709A74A40ECC781B2842E49403B95C2723AA74A40F6C5EFB7872E4940232823D346A74A4035EB8CEF8B2E4940D7B672405CA74A4095B146E28A2E494082E3326E6AA74A4021AD31E8842E4940D9C3A8B57AA74A40003CA242752E494008DE358D92A74A40F573F9C55B2E4940C75FFF1AB5A74A406DC9AA08372E4940AD99C640E8A74A40536639BF172E49402564D64114A84A40DF6124C5112E4940CEEB3EB61BA84A4031F5A919082E4940B7E6334525A84A40DA56B3CEF82D49405885178E31A84A40BD3AC780EC2D49405A2A6F4738A84A4065822BEADD2D4940BD0B4A873DA84A40D3612AA2CB2D4940DE8D058541A84A40425BCEA5B82D49401FED24C742A84A404A404CC2852D4940EEB83C3146A84A40	1
+127	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	1	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	line	\N	\N	\N	\N	35000	\N	\N	0105000020E61000000100000001020000001B000000233DFB80F6304940F635DC91FBA24A40A96CB30CCC304940ABC2B00D26A34A408071BA76B33049405863BFDD48A34A40F9201510A4304940C12D69D663A34A40743A353C623049401A3C026ECCA34A40D539ABAA3C304940D5EAABAB02A44A40E881340818304940C56A984638A44A40135A7B44F12F494050F1C9D46EA44A4093D4F83BCA2F4940692CABFAA6A44A40427D2656A12F49400911154FE2A44A40BD0ADFB18E2F4940D2E3F736FDA44A4087365BD4822F49408A7CF20B0AA54A40D809D407372F4940FC74971F13A54A40F0749DFCCC2E4940C05F27501FA54A40FDA776E1622E494007FBC09F2BA54A40BA70D696F02D4940E3C5C21039A54A40ADEEA2F9AD2D49400A19236D3EA54A40D047742A742D4940F55F8CED5AA54A40B0952B17852D4940E22EB1E88CA54A40CCD3B9A2942D4940D1BCD2E8C4A54A40901A6E1BA12D4940838B70EE0AA64A400835E8F0B52D494075FAE6A331A64A40E8E4FB98C52D49404242942F68A64A40395E262FD72D4940ADFFCE51A2A64A40B68883DFE12D494076AD1809C8A64A40A2708797F12D49402C1B8CC7FBA64A4065D9DD4D012E4940F25D4A5D32A74A40	2
+135	2019-10-03 08:33:47+00	4	75217940	lamax	1860634	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	yes	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	level_crossing	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000116C01463C2E494072E0D57267A64A40	3
+136	2013-06-10 12:04:42+00	3	16494999	pfg21	717210	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	level_crossing	\N	\N	\N	\N	\N	\N	0104000020E610000001000000010100000018BFDF1E3A2D49405C9F83786EA44A40	4
+137	2019-10-03 08:01:13+00	3	75216230	lamax	1860634	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	level_crossing	\N	\N	\N	\N	\N	\N	0104000020E610000001000000010100000066CBA8E8FE2D494004A337818EA54A40	5
+138	2021-02-27 13:01:48+00	1	100096850	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000233DFB80F6304940F635DC91FBA24A40	6
+139	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E610000001000000010100000065D9DD4D012E4940F25D4A5D32A74A40	7
+140	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000A2708797F12D49402C1B8CC7FBA64A40	8
+141	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000B68883DFE12D494076AD1809C8A64A40	9
+142	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000395E262FD72D4940ADFFCE51A2A64A40	10
+143	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000E8E4FB98C52D49404242942F68A64A40	11
+144	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E61000000100000001010000000835E8F0B52D494075FAE6A331A64A40	12
+145	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000901A6E1BA12D4940838B70EE0AA64A40	13
+146	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000CCD3B9A2942D4940D1BCD2E8C4A54A40	14
+147	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000B0952B17852D4940E22EB1E88CA54A40	15
+148	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000D047742A742D4940F55F8CED5AA54A40	16
+149	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000ADEEA2F9AD2D49400A19236D3EA54A40	17
+150	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000BA70D696F02D4940E3C5C21039A54A40	18
+151	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000FDA776E1622E494007FBC09F2BA54A40	19
+152	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000F0749DFCCC2E4940C05F27501FA54A40	20
+153	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E610000001000000010100000087365BD4822F49408A7CF20B0AA54A40	21
+154	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000D809D407372F4940FC74971F13A54A40	22
+155	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000427D2656A12F49400911154FE2A44A40	23
+156	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E610000001000000010100000093D4F83BCA2F4940692CABFAA6A44A40	24
+157	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000135A7B44F12F494050F1C9D46EA44A40	25
+158	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000E881340818304940C56A984638A44A40	26
+159	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000D539ABAA3C304940D5EAABAB02A44A40	27
+160	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000743A353C623049401A3C026ECCA34A40	28
+161	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000F9201510A4304940C12D69D663A34A40	29
+162	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E61000000100000001010000008071BA76B33049405863BFDD48A34A40	30
+163	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000A96CB30CCC304940ABC2B00D26A34A40	31
+164	2021-12-16 05:28:36+00	1	114988044	lamax	1860634	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	crossing	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000134FD1EC152E49401008CFDFDFA54A40	32
+165	2025-07-30 21:44:18+00	1	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	gate	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0104000020E6100000010000000101000000D75FC0DC382D4940E754320054A54A40	33
+166	2025-07-30 21:44:18+00	1	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	gate	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0104000020E61000000100000001010000005C397B67B42C4940AC1C5A643BA54A40	34
+\.
+
+
+--
+-- Data for Name: roads; Type: TABLE DATA; Schema: public; Owner: gisuser
+--
+
+COPY public.roads (ogc_fid, "timestamp", version, changeset, "user", uid, "addr:city", "addr:country", "addr:district", "addr:housenumber", "addr:postcode", "addr:region", "addr:street", admin_level, barrier, boundary, building, "building:levels", circuits, "crossing:bell", gauge, highway, house, landuse, name, "name:ja", "name:ru", "name:uk", "natural", place, power, railway, service, "source:addr", type, voltage, wikidata, wikipedia, geom, id) FROM stdin;
+122	2025-07-30 21:44:18+00	4	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	service	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0105000020E61000000100000001020000000F000000EB419CE2CC2C4940E0B254281CA54A4029081EDFDE2C49401DD434DE0CA54A403D80457EFD2C4940D2F1E20EE5A44A40C4995FCD012D4940E5733804D8A44A40BA06C776082D494081690712CAA44A40A0562CD90C2D4940610D6146C2A44A40B1451CFC0E2D4940BAD91F28B7A44A40CE2A7D32102D4940ED1978A4B0A44A40CE4763FE1B2D4940453C235BA7A44A4032772D211F2D494032F092EE9DA44A405BAE23B31F2D4940FF36305E98A44A404E14D7E7202D49403B32FBE18CA44A4069E78FC4262D494024D97E8D7FA44A404754A86E2E2D494034A5507177A44A40DBABEA40312D49408B4BFA2070A44A40	1
+123	2019-07-15 22:19:38+00	1	72281696	aodwonder	3267434	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	track	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0105000020E61000000100000001020000000600000001F73C7FDA2B49402C1F93D629A54A402EC0E380022C49400272D3B029A54A404CFA7B293C2C4940224F37F526A54A40ED7607C25F2C49400C1F115322A54A40411251A7972C4940A154B1E721A54A40EB419CE2CC2C4940E0B254281CA54A40	2
+124	2025-07-30 21:44:18+00	4	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	track	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0105000020E610000001000000010200000002000000E9FF0BBA732C4940CAB95EE4AFA44A40EB419CE2CC2C4940E0B254281CA54A40	3
+125	2025-07-30 21:44:18+00	5	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	track	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0105000020E610000001000000010200000003000000BD2DA237262D4940BA6F1008CFA44A4063E5E14E332D4940F6076FB488A44A404754A86E2E2D494034A5507177A44A40	4
+126	2020-05-09 14:04:33+00	1	84939165	altoing	621535	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	track	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0105000020E610000001000000010200000008000000B895B954002E49406281542F64A54A4074B91C0AFA2D49407F49CF9959A54A40521443CDEB2D4940B687180A33A54A4030A3B327DC2D494068452FFE11A54A40687AE46ABF2D4940B4F51D0DF1A44A40713AC956972D4940FE767EF6C8A44A409C85E2337E2D494078ADCE7BADA44A40615BF56F4D2D4940524832AB77A44A40	5
+128	2025-07-30 21:44:18+00	2	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	residential	\N	\N	улица Александровская Роща	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0105000020E610000001000000010200000005000000F258D878552D49405924DC1AC7A54A4046DE2868492D494066DAFE9595A54A40A68D34023B2D49407944E0A359A54A40D75FC0DC382D4940E754320054A54A4033614557332D49404D8AEA083BA54A40	6
+129	2025-07-30 21:44:18+00	2	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	residential	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0105000020E61000000100000001020000000400000068565B56062D4940F3E2C4573BA54A408845B181192D49402BED1EEA88A54A40D9791B9B1D2D494052A51C8299A54A401829EF3E222D4940AE84494CABA54A40	7
+130	2026-02-15 15:56:21+00	3	178588319	PolinaKarpacheva	23827081	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	unclassified	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0105000020E610000001000000010200000017000000CF31207BBD2D494024F7CF2E3AA54A404B557F29A82D494077233D563AA54A409E071CAE7A2D49409BF91FAA3AA54A40FB021F285C2D494017A53AD33AA54A4033614557332D49404D8AEA083BA54A4068565B56062D4940F3E2C4573BA54A401025B5ABEB2C4940DCA0F65B3BA54A40583849F3C72C4940591EFF603BA54A406B025658BA2C4940175D83633BA54A405C397B67B42C4940AC1C5A643BA54A408720BD97B12C4940AC1C5A643BA54A406968A8F68E2C4940E118B8F248A54A40D86C40DF712C4940CA9DE3ED52A54A403D15CB88662C4940C891730756A54A40AB8CEB843C2C49406C48371D5CA54A40E47DC1131F2C4940CFE7926060A54A4001231E3F0A2C494092393BBE62A54A40C5D0A057F22B494050BA3EBD63A54A4052E630A9EB2B494080E2B66C63A54A40F522241CC42B4940ECB886BE60A54A4063A93F0CBE2B4940E7FB4E3860A54A40301E94E6452B494034F5BA4560A54A403EC10F18352B49408797F10060A54A40	8
+131	2025-07-30 21:44:18+00	1	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	living_street	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0105000020E610000001000000010200000004000000EFC517EDF12C4940044477FF0EA54A40E16822C7312D4940AB402D060FA54A40EBBE08BF792D4940E77283A10EA54A40A27A6B60AB2D4940BD0743780FA54A40	9
+132	2025-07-30 21:44:18+00	1	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	living_street	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0105000020E61000000100000001020000000400000032AF230ED92C49400CBDB49723A54A4010EDBEBE312D494006007D1123A54A403F479A2E7A2D494006007D1123A54A408F4E0240BA2D494059FED71423A54A40	10
+133	2025-07-30 21:44:18+00	1	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	living_street	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0105000020E610000001000000010200000004000000B7312C35312D49406A64FCA0D3A44A40E16822C7312D4940AB402D060FA54A4010EDBEBE312D494006007D1123A54A4033614557332D49404D8AEA083BA54A40	11
+134	2025-07-30 21:44:18+00	1	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	living_street	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	0105000020E6100000010000000102000000060000009E071CAE7A2D49409BF91FAA3AA54A403F479A2E7A2D494006007D1123A54A40EBBE08BF792D4940E77283A10EA54A405C6045FC792D4940BC8800F104A54A40EB1A2D077A2D494079C9FFE4EFA44A40094E7D20792D494029EB3713D3A44A40	12
+\.
+
+
+--
+-- Data for Name: spatial_ref_sys; Type: TABLE DATA; Schema: public; Owner: gisuser
+--
+
+COPY public.spatial_ref_sys (srid, auth_name, auth_srid, srtext, proj4text) FROM stdin;
+\.
+
+
+--
+-- Data for Name: tmp_layer; Type: TABLE DATA; Schema: public; Owner: gisuser
+--
+
+COPY public.tmp_layer (ogc_fid, "timestamp", version, changeset, "user", uid, "addr:city", "addr:country", "addr:district", "addr:housenumber", "addr:postcode", "addr:region", "addr:street", admin_level, barrier, boundary, building, "building:levels", circuits, "crossing:bell", gauge, highway, house, landuse, name, "name:ja", "name:ru", "name:uk", "natural", place, power, railway, service, "source:addr", type, voltage, wikidata, wikipedia, id, geom) FROM stdin;
+1	2025-01-14 11:47:48+00	9	161342069	Elizen	8923706	\N	\N	\N	\N	\N	\N	\N	8	\N	administrative	\N	\N	\N	\N	\N	\N	\N	\N	городское поселение Петра Дубрава	\N	городское поселение Петра Дубрава	Міське поселення Петра Дубрава	\N	\N	\N	\N	\N	\N	boundary	\N	Q4145573	ru:Городское поселение Петра Дубрава	relation/5926983	0106000020E610000001000000010300000001000000600000000105CD9D4F304940CFF753E3A5A94A40B180AE224830494019FE7854A1A94A4003BB50AF4A30494057CCADB59CA94A40C91EA166483049402EF713DF9AA94A40DAE731CA33304940DCF0BBE996A94A406235F169A92F49401596D3F94BA94A40D1BD3DBE732F4940562DE92807A94A40FDC45CAD6E2F4940B5858CECEFA84A40445266DE052D4940981AFC581CA94A40E2C8A8D7D22C49404839F306F3A84A4067D7BD15892C4940C1BD7CFCEFA84A4004824AA6542C49405130630AD6A84A408023264D282C4940208CE953D8A84A40DF814B112A2C4940F72AE8AC05A84A4032A0281AB52C49408BF95EE8B6A74A40B28E99FA2F2D4940D48E2CAA8FA74A402BD4E473382D4940561C188A85A74A40A786472C732D4940BE326FD575A74A40611514ABAB2D49400C152D8A68A74A40DC18969A982D49407C702D4954A74A4020BB664D872D4940DCACB0CF52A74A409BB56F49692D4940B8D6CD7B52A74A400FD594641D2D494093B53CC560A74A403F7672E19B2C494086CB852579A74A406CA92803AC2C4940DA3A38D89BA74A4056783CD2852C494076C6F7C5A5A74A40BBC3DCA4582C4940D58FF238B1A74A40B0D69AF7492C4940FF70FCF5AFA74A40DAAE2BC13D2C4940252B757FABA74A407AEAECBF292C4940926E95719DA74A405DF11EB1272C4940EEAE58688CA74A40E43E83972A2C4940B1FDBF4582A74A404BC8AC83282C49404384C99E4EA74A400609F6042E2C4940DA5548F949A74A406B7242322E2C49404E092D9045A74A40320ADD802A2C4940484CF50945A74A40CDA090532A2C4940F6A1C15C41A74A40A185048C2E2C494023AF18BF3AA74A403793CA6F2C2C4940357BA01518A74A406294B1EB282C4940E98DA4EE14A74A40C8DE9C5B322C4940AB48E06AF8A64A409BB45F2D2D2C4940C693933FCEA64A40B0C16790272C4940A79AB40474A64A405FF64608EA2B494002AA6EE470A64A4099993EE0262B4940D02456EB69A64A4038818EFBFB2A494070D4658C6AA64A40333D17FCEC2A4940A314BE0864A64A4016985F178F2A49409F64613E0FA64A40D800B6CD9E2A49404ED1915CFEA54A4092729C80CB2A49406987646DF8A54A402C0318E0CC2A49401EF34B0EE9A54A402EABB019E02A494001C92A5BDAA54A40E5EC4218E42A49409180D1E5CDA54A405DA96741282B49407C314A86D2A54A4033BD699F332B4940600729D3C3A54A400A4735913E2B494040016FDCBDA54A40E7B05648542B49409F3C2CD49AA54A40676A6D75942B4940B30D373BADA54A401F93D629A02B4940A3D34E289FA54A401FE10F9AB82B49406F7319EDA7A54A400DC11660C42B4940D36E4FEB91A54A401BD5E940D62B49402B52BC2594A54A40B5FB5580EF2B4940FA658BFF96A54A40EEDA94E12E2C4940C644944094A54A40335992F2492C4940E42B26DB65A54A40C22E2F65852C49405055A18158A54A40099CB690912C4940A6B6D4415EA54A40914EB8B29F2C49401EF3A6C75BA54A409CB7FB66AC2C49401D8B12995EA54A409BB40474BA2C494039ACBA5862A54A4080780206EE2C4940C45A7C0A80A54A409CD5A7C1D92C49409E899FB591A54A403682435EC52C4940B7AC0CF49AA54A4063D520CCED2C4940E0A7058AB3A54A40D845D1031F2D49409FBEAFDBB1A54A4061EDDE40372D494045ECB886BEA54A405289A18B3C2D4940B456B439CEA54A403D491520652D49404A3668F9CBA54A40D2393FC5712D4940613EB4EACEA54A40404A91216C2D4940509F2E9CB5A54A4005E4A661532D49406EA296E656A54A405F55078A692D49405133FF4355A54A40F6285C8FC22D49405AB4A5B338A54A4004FD2A65BE2D49405A0D897B2CA54A408F4E0240BA2D494059FED71423A54A40D143C8D4B82D4940EA3AF9991FA54A40670696C8AA2D4940AABBB20B06A54A40965E9B8D952D4940B1924550EBA44A403360DA81842D4940B2A03028D3A44A4007B64AB0382D4940DF80E03B7BA44A40BC7BDBA73E2D4940882760E05EA44A40865A2E76562D4940480845A973A44A40928433AE6E2D4940912B50E67AA44A40DC57D4168D2E49401F50919E7DA44A40C99A47B4D32F49406B71D75C7FA44A400105CD9D4F304940CFF753E3A5A94A40
+2	2025-01-14 11:47:48+00	16	161342069	Elizen	8923706	\N	\N	\N	\N	\N	\N	\N	8	\N	administrative	\N	\N	\N	\N	\N	\N	\N	\N	городское поселение Смышляевка	\N	городское поселение Смышляевка	Міське поселення Смишляївка	\N	\N	\N	\N	\N	\N	boundary	\N	Q4145595	ru:Городское поселение Смышляевка	relation/5926984	0106000020E610000001000000010300000001000000600000000105CD9D4F304940CFF753E3A5A94A40B180AE224830494019FE7854A1A94A4003BB50AF4A30494057CCADB59CA94A40C91EA166483049402EF713DF9AA94A40DAE731CA33304940DCF0BBE996A94A406235F169A92F49401596D3F94BA94A40D1BD3DBE732F4940562DE92807A94A40FDC45CAD6E2F4940B5858CECEFA84A40445266DE052D4940981AFC581CA94A40E2C8A8D7D22C49404839F306F3A84A4067D7BD15892C4940C1BD7CFCEFA84A4004824AA6542C49405130630AD6A84A408023264D282C4940208CE953D8A84A40DF814B112A2C4940F72AE8AC05A84A4032A0281AB52C49408BF95EE8B6A74A40B28E99FA2F2D4940D48E2CAA8FA74A402BD4E473382D4940561C188A85A74A40A786472C732D4940BE326FD575A74A40611514ABAB2D49400C152D8A68A74A40DC18969A982D49407C702D4954A74A4020BB664D872D4940DCACB0CF52A74A409BB56F49692D4940B8D6CD7B52A74A400FD594641D2D494093B53CC560A74A403F7672E19B2C494086CB852579A74A406CA92803AC2C4940DA3A38D89BA74A4056783CD2852C494076C6F7C5A5A74A40BBC3DCA4582C4940D58FF238B1A74A40B0D69AF7492C4940FF70FCF5AFA74A40DAAE2BC13D2C4940252B757FABA74A407AEAECBF292C4940926E95719DA74A405DF11EB1272C4940EEAE58688CA74A40E43E83972A2C4940B1FDBF4582A74A404BC8AC83282C49404384C99E4EA74A400609F6042E2C4940DA5548F949A74A406B7242322E2C49404E092D9045A74A40320ADD802A2C4940484CF50945A74A40CDA090532A2C4940F6A1C15C41A74A40A185048C2E2C494023AF18BF3AA74A403793CA6F2C2C4940357BA01518A74A406294B1EB282C4940E98DA4EE14A74A40C8DE9C5B322C4940AB48E06AF8A64A409BB45F2D2D2C4940C693933FCEA64A40B0C16790272C4940A79AB40474A64A405FF64608EA2B494002AA6EE470A64A4099993EE0262B4940D02456EB69A64A4038818EFBFB2A494070D4658C6AA64A40333D17FCEC2A4940A314BE0864A64A4016985F178F2A49409F64613E0FA64A40D800B6CD9E2A49404ED1915CFEA54A4092729C80CB2A49406987646DF8A54A402C0318E0CC2A49401EF34B0EE9A54A402EABB019E02A494001C92A5BDAA54A40E5EC4218E42A49409180D1E5CDA54A405DA96741282B49407C314A86D2A54A4033BD699F332B4940600729D3C3A54A400A4735913E2B494040016FDCBDA54A40E7B05648542B49409F3C2CD49AA54A40676A6D75942B4940B30D373BADA54A401F93D629A02B4940A3D34E289FA54A401FE10F9AB82B49406F7319EDA7A54A400DC11660C42B4940D36E4FEB91A54A401BD5E940D62B49402B52BC2594A54A40B5FB5580EF2B4940FA658BFF96A54A40EEDA94E12E2C4940C644944094A54A40335992F2492C4940E42B26DB65A54A40C22E2F65852C49405055A18158A54A40099CB690912C4940A6B6D4415EA54A40914EB8B29F2C49401EF3A6C75BA54A409CB7FB66AC2C49401D8B12995EA54A409BB40474BA2C494039ACBA5862A54A4080780206EE2C4940C45A7C0A80A54A409CD5A7C1D92C49409E899FB591A54A403682435EC52C4940B7AC0CF49AA54A4063D520CCED2C4940E0A7058AB3A54A40D845D1031F2D49409FBEAFDBB1A54A4061EDDE40372D494045ECB886BEA54A405289A18B3C2D4940B456B439CEA54A403D491520652D49404A3668F9CBA54A40D2393FC5712D4940613EB4EACEA54A40404A91216C2D4940509F2E9CB5A54A4005E4A661532D49406EA296E656A54A405F55078A692D49405133FF4355A54A40F6285C8FC22D49405AB4A5B338A54A4004FD2A65BE2D49405A0D897B2CA54A408F4E0240BA2D494059FED71423A54A40D143C8D4B82D4940EA3AF9991FA54A40670696C8AA2D4940AABBB20B06A54A40965E9B8D952D4940B1924550EBA44A403360DA81842D4940B2A03028D3A44A4007B64AB0382D4940DF80E03B7BA44A40BC7BDBA73E2D4940882760E05EA44A40865A2E76562D4940480845A973A44A40928433AE6E2D4940912B50E67AA44A40DC57D4168D2E49401F50919E7DA44A40C99A47B4D32F49406B71D75C7FA44A400105CD9D4F304940CFF753E3A5A94A40
+3	2026-02-15 15:56:21+00	15	178588319	PolinaKarpacheva	23827081	\N	RU	Волжский район	\N	\N	Самарская область	\N	8	\N	administrative	\N	\N	\N	\N	\N	\N	\N	\N	Петра Дубрава	ペトラ・ドゥブラヴァ	Петра Дубрава	\N	\N	village	\N	\N	\N	\N	\N	\N	\N	\N	way/40994934	0106000020E61000000100000001030000000100000017000000395DBB59282E4940B6D4E6A49CA74A4072F7DE84E72D494094F1947ABBA64A40D32B0A606F2D494054A06010A2A64A40CEC06D12282D49403B0785F70BA64A401025B5ABEB2C4940DCA0F65B3BA54A40FB021F285C2D494017A53AD33AA54A404B557F29A82D494077233D563AA54A40AFE6A507AA2E494094861A8524A54A40F11879B4CC2F4940E36833F389A44A40A547F8832631494010E9B7AF03A54A408649A764EF30494076AE83DE76A54A40D23AAA9A20304940DCEA837698A54A4028A902A4EC2F494041DD9B3AEAA54A40E4935F50F02F49404692C5A28EA64A40E62F3E16EC2F4940D6BECAEBD2A64A40F68E64A07C304940A1B14005D1A84A40D91C8C7D6E304940A0916346D3A84A401EB1CC11E82F49403214C149E4A84A409CC3B5DAC32F49407F1A52A0AAA84A40476EF200BB2E4940BA3EBD63C2A84A40C5B766E1A12E49407F02DEB87BA84A4030F488D1732E49404E2DB6A4FEA74A40395DBB59282E4940B6D4E6A49CA74A40
+4	2015-02-08 13:03:33+00	2	28701880	LexIgnatov	316868	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	wood	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/47488765	0106000020E61000000100000001030000000100000015000000DCE742F68B2D4940653733FAD1A44A40C6BA5DD4932D494061191BBAD9A44A40EAAD26F49F2D49402878AFFFDFA44A40668A94C1AC2D494044B63D8BEFA44A406D14FEB1B52D4940336E6AA0F9A44A405C284F0FC02D4940207FC40A12A54A4003C12D69D62D4940914028942AA54A40568B3ED5D72D49408A3842AB38A54A408C039E6AE32D4940D141F2295BA54A402532BD0EE62D494037FC6EBA65A54A40D62CE11AE92D49407A4BDEA579A54A40EFB95D79DA2D4940C7246DF47BA54A407233DC80CF2D4940F0A88CDA58A54A4054878153C42D4940A6423C122FA54A40D143C8D4B82D4940EA3AF9991FA54A409FC728CFBC2D4940A70EA8ED15A54A40811BCEA1B12D494099147A5803A54A4011A56208A52D4940214B30E6F8A44A40DC43673E8C2D49408978EBFCDBA44A40B7A05280832D4940A2EBC20FCEA44A40DCE742F68B2D4940653733FAD1A44A40
+5	2015-02-08 13:03:33+00	2	28701880	LexIgnatov	316868	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	wood	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/47488766	0106000020E610000001000000010300000001000000160000000FA1A586912D494049415CDEC1A44A404BAE62F19B2D49400CE6AF90B9A44A40685485ABA82D49409B3347FBC4A44A40D656EC2FBB2D4940D542C9E4D4A44A40960FF747CE2D49406BD84A43E8A44A4083A10E2BDC2D49400494E1D3F7A44A40C5CA68E4F32D49402405BB0622A54A404976B691FC2D49406E5F515B34A54A40858373FC062E4940B693D27D4AA54A400A2FC1A90F2E49403942AB387AA54A402DD15966112E49403C3E6BC889A54A40FBDBAF4C092E4940E9256B798AA54A400513245B022E49405BE37D665AA54A408ED948C8F62D4940AB6A93D453A54A4053AD2AA0F52D4940198C118942A54A405CE49EAEEE2D49407085668D30A54A40D757B2BEDC2D4940E41824D813A54A40A603A3DCC72D4940BD01C177F6A44A409A661591BC2D4940C9303894EBA44A40324404D2B42D4940CFD0894EE0A44A40685485ABA82D494034EFDD8BD4A44A400FA1A586912D494049415CDEC1A44A40
+6	2016-11-21 13:22:14+00	1	43846704	lamax	1860634	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	residential	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/454876792	0106000020E61000000100000001030000000100000005000000FB07ECC5AB2D49404FFBF72A43A54A4006D09442C52D4940B263C8563CA54A40CD0358E4D72D49402CDFE98486A54A4097546D37C12D4940738577B988A54A40FB07ECC5AB2D49404FFBF72A43A54A40
+7	2023-11-17 10:46:42+00	1	144133327	desk77	3417100	\N	\N	\N	9	\N	\N	улица Александровская Роща	\N	\N	\N	yes	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	ЕГРН	\N	\N	\N	\N	way/1224738944	0106000020E610000001000000010300000001000000050000005BCF108E592D494019BA23AD42A54A4091CE650F592D494003F456B840A54A40717500C45D2D4940036A204C40A54A403B76AB425E2D49401A30ED4042A54A405BCF108E592D494019BA23AD42A54A40
+8	2023-11-17 10:46:42+00	1	144133327	desk77	3417100	\N	\N	\N	46Б	\N	\N	улица Александровская Роща	\N	\N	\N	yes	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	ЕГРН	\N	\N	\N	\N	way/1224738948	0106000020E61000000100000001030000000100000005000000D8D248F02B2D49404F9FD3E242A54A400DD29D712B2D494038D906EE40A54A4082380F27302D4940384FD08140A54A40B779E3A4302D49404F159D7642A54A40D8D248F02B2D49404F9FD3E242A54A40
+9	2026-02-15 15:56:21+00	2	178588319	PolinaKarpacheva	23827081	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	residential	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1418767606	0106000020E6100000010000000103000000010000000E0000006B025658BA2C4940175D83633BA54A40BED9E6C6F42C4940D5A2F43B03A54A4093F6ABA5252D494017F60F7DD2A44A40094E7D20792D494029EB3713D3A44A403360DA81842D4940B2A03028D3A44A40965E9B8D952D4940B1924550EBA44A40670696C8AA2D4940AABBB20B06A54A40D143C8D4B82D4940EA3AF9991FA54A408F4E0240BA2D494059FED71423A54A4004FD2A65BE2D49405A0D897B2CA54A40F6285C8FC22D49405AB4A5B338A54A4031B43A39432D49403C53437639A54A40583849F3C72C4940591EFF603BA54A406B025658BA2C4940175D83633BA54A40
+10	2025-07-30 21:44:18+00	1	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	residential	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1418767607	0106000020E6100000010000000103000000010000000C000000CE7D2887052D49403A24100AA5A54A4098CE3DDAEE2C49401D2DBDEC8DA54A4087C267EBE02C49404C4FFD288FA54A4030FFD76FDC2C494060B829D489A54A40717BDD7DE92C4940ED7195DD82A54A40FF1B203DEA2C49405F1F420180A54A4030DBA914962C494074B8B1344BA54A406BF9DC64AF2C4940802FE0C03FA54A403B25D698C62C4940B05758703FA54A405EE85B30022D49400A61DADC3DA54A40349D42531B2D4940CA1242ACA3A54A40CE7D2887052D49403A24100AA5A54A40
+11	2025-07-30 21:44:18+00	1	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	residential	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1418767609	0106000020E61000000100000001030000000100000005000000D82B2CB81F2D49409BE7887C97A54A407226B737092D4940CF34BCB43CA54A4099BC5C1F312D49400A61DADC3DA54A40D09F9163462D49401915DD1F94A54A40D82B2CB81F2D49409BE7887C97A54A40
+12	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	97	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851738	0106000020E61000000100000001030000000100000005000000227D4919272D4940A9FB00A436A54A40D4DF0154272D494057F5A8AE32A54A400751AD742D2D49406F6589CE32A54A40E9ADCB3A2D2D4940C06BE1C336A54A40227D4919272D4940A9FB00A436A54A40
+13	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	98	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851739	0106000020E61000000100000001030000000100000005000000D05C4CD8232D49404392B47636A54A40A97FB50F1E2D4940140E187F36A54A409D47C5FF1D2D49404B19DDE632A54A4059E432C9232D49407B9D79DE32A54A40D05C4CD8232D49404392B47636A54A40
+14	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	99	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851740	0106000020E61000000100000001030000000100000005000000FF4701FD192D49403227C34C36A54A40C689AF76142D49407F202F5A36A54A4067536463142D4940F8D2CA7333A54A409F11B6E9192D4940AAD95E6633A54A40FF4701FD192D49403227C34C36A54A40
+15	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	100	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851741	0106000020E61000000100000001030000000100000005000000B011D264102D4940A9CDEE7F36A54A40900B186E0A2D4940915D0E6036A54A409B711AA20A2D49407B9D79DE32A54A40BC77D498102D4940930D5AFE32A54A40B011D264102D4940A9CDEE7F36A54A40
+16	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	101	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851742	0106000020E61000000100000001030000000100000005000000A9A10DC0062D494061AB5F4436A54A4036BDD584FE2C4940F66A364536A54A40A2FDFE83FE2C494052AE3ABC31A54A4014E236BF062D494052AE3ABC31A54A40A9A10DC0062D494061AB5F4436A54A40
+17	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	102	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851743	0106000020E61000000100000001030000000100000005000000B58E05E0FA2C4940BB80971936A54A408A703898F22C494079BF1B1C36A54A403672DD94F22C494052AE3ABC31A54A406290AADCFA2C4940936FB6B931A54A40B58E05E0FA2C4940BB80971936A54A40
+18	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	96	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851744	0106000020E610000001000000010300000001000000050000003DBBD7A4362D4940431CEBE236A54A405B5EB9DE362D4940F21593ED32A54A40228F3B003D2D49400A86730D33A54A4005EC59C63C2D49405B8CCB0237A54A403DBBD7A4362D4940431CEBE236A54A40
+19	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	95	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851745	0106000020E610000001000000010300000001000000050000002CCF2802412D494049F3C7B436A54A40DF31E13C412D4940F8EC6FBF32A54A4011A38C5D472D4940105D50DF32A54A40F3FFAA23472D49406163A8D436A54A402CCF2802412D494049F3C7B436A54A40
+20	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	94	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851746	0106000020E61000000100000001030000000100000005000000F23BF2AC492D4940F04BA20337A54A40A59EAAE7492D49409E454A0E33A54A40D70F5608502D4940B6B52A2E33A54A40B96C74CE4F2D494008BC822337A54A40F23BF2AC492D4940F04BA20337A54A40
+21	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	93	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851747	0106000020E6100000010000000103000000010000000500000023CF3F0B532D4940A885371037A54A4041722145532D4940577FDF1A33A54A4073E3CC65592D494004AF963B33A54A40EAFFC12C592D4940C0F5173037A54A4023CF3F0B532D4940A885371037A54A40
+22	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	92	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851748	0106000020E6100000010000000103000000010000000500000095511B8B5C2D4940FCF95BA736A54A40B3F4FCC45C2D4940ABF303B232A54A407A257FE6622D4940C263E4D132A54A405C829DAC622D4940146A3CC736A54A4095511B8B5C2D4940FCF95BA736A54A40
+23	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	91	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851749	0106000020E61000000100000001030000000100000005000000F54E6095662D4940494FECFC36A54A4013F241CF662D4940F848940733A54A404563EDEF6C2D494010B9742733A54A4028C00BB66C2D494061BFCC1C37A54A40F54E6095662D4940494FECFC36A54A40
+24	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	90	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851750	0106000020E6100000010000000103000000010000000500000061287167702D4940434AFD0637A54A407FCB52A1702D494087037C1233A54A40B13CFEC1762D49409E735C3233A54A4094991C88762D4940F079B42737A54A4061287167702D4940434AFD0637A54A40
+25	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	116	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851751	0106000020E6100000010000000103000000010000000500000097900F7A362D4940615A2FE12BA54A4049F3C7B4362D49400F54D7EB27A54A407C6473D53C2D494027C4B70B28A54A405EC1919B3C2D494078CA0F012CA54A4097900F7A362D4940615A2FE12BA54A40
+26	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	117	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851752	0106000020E61000000100000001030000000100000005000000BCBD5AA43F2D4940789CFDDC2BA54A40D9603CDE3F2D49402796A5E727A54A40A191BEFF452D49403F06860728A54A4083EEDCC5452D4940900CDEFC2BA54A40BCBD5AA43F2D4940789CFDDC2BA54A40
+27	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	118	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851753	0106000020E61000000100000001030000000100000005000000B7515381492D49400DD29D712BA54A40D4F434BB492D4940BCCB457C27A54A400766E0DB4F2D4940D43B269C27A54A40E9C2FEA14F2D494025427E912BA54A40B7515381492D49400DD29D712BA54A40
+28	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	119	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851754	0106000020E610000001000000010300000001000000050000007052E284532D4940314C5C7D2BA54A4023B59ABF532D4940E045048827A54A40552646E0592D4940F8B5E4A727A54A40378364A6592D494049BC3C9D2BA54A407052E284532D4940314C5C7D2BA54A40
+29	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	120	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851755	0106000020E61000000100000001030000000100000005000000776682E15C2D494055F42CAD2BA54A409509641B5D2D494003EED4B727A54A40C77A0F3C632D49401B5EB5D727A54A403E970403632D49406D640DCD2BA54A40776682E15C2D494055F42CAD2BA54A40
+30	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	121	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851756	0106000020E610000001000000010300000001000000050000004F52AA8E662D4940D27135B22BA54A4001B562C9662D4940816BDDBC27A54A4033260EEA6C2D494098DBBDDC27A54A4016832CB06C2D4940EAE115D22BA54A404F52AA8E662D4940D27135B22BA54A40
+31	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	122	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851757	0106000020E61000000100000001030000000100000005000000AF6994E46F2D4940D243238E2BA54A40CD0C761E702D4940813DCB9827A54A40FF7D213F762D49402D6D82B927A54A40E1DA3F05762D49407E73DAAE2BA54A40AF6994E46F2D4940D243238E2BA54A40
+32	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	115	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851758	0106000020E6100000010000000103000000010000000500000093F07332272D49404F4B62FF2BA54A40B093556C272D4940FD440A0A28A54A40E304018D2D2D494015B5EA2928A54A40C5611F532D2D494066BB421F2CA54A4093F07332272D49404F4B62FF2BA54A40
+33	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	114	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851759	0106000020E61000000100000001030000000100000005000000D9791B9B1D2D494055223FD12BA54A40F71CFDD41D2D4940031CE7DB27A54A40298EA8F5232D4940B04B9EFC27A54A400BEBC6BB232D49406C921FF12BA54A40D9791B9B1D2D494055223FD12BA54A40
+34	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	113	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851760	0106000020E610000001000000010300000001000000050000000865D0BF132D49408AD9DCE22BA54A402508B2F9132D4940CE925BEE27A54A40ED38341B1A2D4940E6023C0E28A54A40CF9552E1192D4940370994032CA54A400865D0BF132D49408AD9DCE22BA54A40
+35	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	112	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851761	0106000020E610000001000000010300000001000000050000003664F2BC0A2D49400D8AE6012CA54A405407D4F60A2D4940BC838E0C28A54A401B385618112D4940D4F36E2C28A54A40FD9474DE102D494025FAC6212CA54A403664F2BC0A2D49400D8AE6012CA54A40
+36	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	111	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851762	0106000020E61000000100000001030000000100000005000000A0675831012D4940B42A78C02BA54A40BE0A3A6B012D4940632420CB27A54A40F07BE58B072D49407A9400EB27A54A40D3D80352072D4940CC9A58E02BA54A40A0675831012D4940B42A78C02BA54A40
+37	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	142	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851763	0106000020E61000000100000001030000000100000005000000227D4919272D494078094E7D20A54A403F202B53272D49402703F6871CA54A400751AD742D2D4940D432ADA81CA54A40E9ADCB3A2D2D49402539059E20A54A40227D4919272D494078094E7D20A54A40
+38	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	143	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851764	0106000020E61000000100000001030000000100000005000000E555E7621D2D49405B947E6720A54A4098B89F9D1D2D4940098E26721CA54A40CA294BBE232D494021FE06921CA54A40AC866984232D494072045F8720A54A40E555E7621D2D49405B947E6720A54A40
+39	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	144	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851765	0106000020E610000001000000010300000001000000050000007E7B8D13152D494013CE137420A54A409C1E6F4D152D4940C2C7BB7E1CA54A40634FF16E1B2D4940DA379C9E1CA54A4045AC0F351B2D49402B3EF49320A54A407E7B8D13152D494013CE137420A54A40
+40	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	145	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851766	0106000020E610000001000000010300000001000000050000006B2FFDA60B2D494007C4358820A54A4089D2DEE00B2D4940B6BDDD921CA54A40BB438A01122D4940CE2DBEB21CA54A409EA0A8C7112D49401F3416A820A54A406B2FFDA60B2D494007C4358820A54A40
+41	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	141	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851767	0106000020E610000001000000010300000001000000050000003227C34C362D4940D168BCBE20A54A404FCAA486362D4940806264C91CA54A40823B50A73C2D49402D921BEA1CA54A4064986E6D3C2D49407E9873DF20A54A403227C34C362D4940D168BCBE20A54A40
+42	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	140	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851768	0106000020E61000000100000001030000000100000005000000CDE0945E402D4940FB8B457820A54A4080434D99402D4940AA85ED821CA54A40B2B4F8B9462D4940C2F5CDA21CA54A4094111780462D494013FC259820A54A40CDE0945E402D4940FB8B457820A54A40
+43	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	139	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851769	0106000020E61000000100000001030000000100000005000000B6099C114A2D494072045F8720A54A40D4AC7D4B4A2D494021FE06921CA54A40061E296C502D4940396EE7B11CA54A40E97A4732502D49408A743FA720A54A40B6099C114A2D494072045F8720A54A40
+44	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	138	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851770	0106000020E61000000100000001030000000100000005000000EDFDFCAD532D4940F52A323A20A54A400BA1DEE7532D4940A424DA441CA54A40D2D160095A2D4940515491651CA54A40B42E7FCF592D4940A25AE95A20A54A40EDFDFCAD532D4940F52A323A20A54A40
+45	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	137	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851771	0106000020E6100000010000000103000000010000000500000036012B2C5D2D49405B947E6720A54A4053A40C665D2D4940098E26721CA54A401AD58E87632D494021FE06921CA54A40FD31AD4D632D494072045F8720A54A4036012B2C5D2D49405B947E6720A54A40
+46	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	136	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851772	0106000020E61000000100000001030000000100000005000000AE2CD159662D49404F2E7C3320A54A40CCCFB293662D4940FD27243E1CA54A40FE405EB46C2D49401598045E1CA54A40E09D7C7A6C2D4940679E5C5320A54A40AE2CD159662D49404F2E7C3320A54A40
+47	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	135	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851773	0106000020E610000001000000010300000001000000050000009150E916702D4940D20C987620A54A4044B3A151702D4940800640811CA54A4076244D72762D4940987620A11CA54A4058816B38762D4940E97C789620A54A409150E916702D4940D20C987620A54A40
+48	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	157	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851774	0106000020E610000001000000010300000001000000050000005BD48272362D49403C3E100F17A54A40797764AC362D4940EA37B81913A54A40ABE80FCD3C2D494002A8983913A54A408E452E933C2D494053AEF02E17A54A405BD48272362D49403C3E100F17A54A40
+49	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	158	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851775	0106000020E610000001000000010300000001000000050000000F18DAEF3F2D4940D630E82917A54A402DBBBB29402D4940852A903413A54A405F2C674A462D49409D9A705413A54A4041898510462D4940EEA0C84917A54A400F18DAEF3F2D4940D630E82917A54A40
+50	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	159	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851776	0106000020E6100000010000000103000000010000000500000040D93972492D49402A2F432D17A54A405D7C1BAC492D4940D828EB3713A54A4090EDC6CC4F2D4940F098CB5713A54A40724AE5924F2D4940419F234D17A54A4040D93972492D49402A2F432D17A54A40
+51	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	160	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851777	0106000020E6100000010000000103000000010000000500000058B4EF40532D4940005471E316A54A407657D17A532D4940AF4D19EE12A54A40A8C87C9B592D4940C7BDF90D13A54A408B259B61592D494018C4510317A54A4058B4EF40532D4940005471E316A54A40
+52	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	161	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851778	0106000020E61000000100000001030000000100000005000000DCCFCE0E5D2D49407D2D9E3017A54A40FA72B0485D2D4940C1E61C3C13A54A40C1A3326A632D4940D856FD5B13A54A40A4005130632D49402A5D555117A54A40DCCFCE0E5D2D49407D2D9E3017A54A40
+53	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	162	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851779	0106000020E61000000100000001030000000100000005000000608F8994662D494036AFEAAC16A54A4013F241CF662D4940E5A892B712A54A404563EDEF6C2D4940FC1873D712A54A4028C00BB66C2D49404E1FCBCC16A54A40608F8994662D494036AFEAAC16A54A40
+54	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	163	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851780	0106000020E61000000100000001030000000100000005000000200BD121702D494018963FDF16A54A403EAEB25B702D4940C78FE7E912A54A40701F5E7C762D494073BF9E0A13A54A40E73B5343762D4940C5C5F6FF16A54A40200BD121702D494018963FDF16A54A40
+55	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	181	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851781	0106000020E61000000100000001030000000100000005000000264BF784362D4940D03C258C0BA54A4043EED8BE362D49407F36CD9607A54A400B1F5BE03C2D494097A6ADB607A54A40ED7B79A63C2D4940E8AC05AC0BA54A40264BF784362D4940D03C258C0BA54A40
+56	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	180	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851782	0106000020E610000001000000010300000001000000050000000F18DAEF3F2D49406B2FFDA60BA54A402DBBBB29402D49401A29A5B107A54A405F2C674A462D4940329985D107A54A4041898510462D4940839FDDC60BA54A400F18DAEF3F2D49406B2FFDA60BA54A40
+57	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	179	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851783	0106000020E61000000100000001030000000100000005000000F2DFCD64492D4940652A0EB10BA54A401083AF9E492D49401424B6BB07A54A4042F45ABF4F2D49402C9496DB07A54A40255179854F2D49407D9AEED00BA54A40F2DFCD64492D4940652A0EB10BA54A40
+58	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	178	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851784	0106000020E61000000100000001030000000100000005000000D55F0A6A532D4940839FDDC60BA54A40F302ECA3532D4940329985D107A54A40257497C4592D4940490966F107A54A4008D1B58A592D49409B0FBEE60BA54A40D55F0A6A532D4940839FDDC60BA54A40
+59	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	177	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851785	0106000020E610000001000000010300000001000000050000003016E1815C2D49409B5775560BA54A404EB9C2BB5C2D49404A511D6107A54A40802A6EDC622D494061C1FD8007A54A4062878CA2622D4940B3C755760BA54A403016E1815C2D49409B5775560BA54A40
+60	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	176	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851786	0106000020E610000001000000010300000001000000050000001FFC1FBB662D4940D03C258C0BA54A403C9F01F5662D49407F36CD9607A54A4004D083166D2D49402C6684B707A54A40E62CA2DC6C2D49407D6CDCAC0BA54A401FFC1FBB662D4940D03C258C0BA54A40
+61	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	175	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851787	0106000020E610000001000000010300000001000000050000005C6B39E16F2D49407739DB920BA54A40790E1B1B702D49402633839D07A54A40413F9D3C762D49403EA363BD07A54A40239CBB02762D49408FA9BBB20BA54A405C6B39E16F2D49407739DB920BA54A40
+62	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	193	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851788	0106000020E61000000100000001030000000100000005000000EA324635362D4940881F52C202A54A4008D6276F362D49403619FACCFEA44A40CF06AA903C2D49404E89DAECFEA44A40B263C8563C2D49409F8F32E202A54A40EA324635362D4940881F52C202A54A40
+63	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	194	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851789	0106000020E61000000100000001030000000100000005000000621635F33F2D49404602B27C02A54A401579ED2D402D4940F5FB5987FEA44A4047EA984E462D49400D6C3AA7FEA44A402A47B714462D49405E72929C02A54A40621635F33F2D49404602B27C02A54A40
+64	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	195	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851790	0106000020E6100000010000000103000000010000000500000075BEE9A7492D494046A68D3402A54A409361CBE1492D4940F59F353FFEA44A40C5D27602502D49400D10165FFEA44A40A82F95C84F2D49405E166E5402A54A4075BEE9A7492D494046A68D3402A54A40
+65	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	196	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851791	0106000020E610000001000000010300000001000000050000002EBF78AB532D49407C5D2B4602A54A404C625AE5532D49402B57D350FEA44A407FD305065A2D494042C7B370FEA44A40613024CC592D494094CD0B6602A54A402EBF78AB532D49407C5D2B4602A54A40
+66	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	197	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851792	0106000020E6100000010000000103000000010000000500000048E2E5E95C2D49400B46257502A54A406585C7235D2D4940B93FCD7FFEA44A402CB64945632D4940D1AFAD9FFEA44A400F13680B632D494022B6059502A54A4048E2E5E95C2D49400B46257502A54A40
+67	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	198	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851793	0106000020E61000000100000001030000000100000005000000FBC9181F662D49402E92D15C02A54A40196DFA58662D4940DD8B7967FEA44A404BDEA5796C2D49408ABB3088FEA44A402E3BC43F6C2D49404602B27C02A54A40FBC9181F662D49402E92D15C02A54A40
+68	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	199	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851794	0106000020E6100000010000000103000000010000000500000079B2F6D26F2D4940FF3B478902A54A409755D80C702D4940AD35EF93FEA44A405E865A2E762D4940C5A5CFB3FEA44A4041E378F4752D494016AC27A902A54A4079B2F6D26F2D4940FF3B478902A54A40
+69	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	213	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851795	0106000020E61000000100000001030000000100000005000000D39453F1352D494088307E1AF7A44A40F037352B362D4940362A2625F3A44A40B768B74C3C2D4940E359DD45F3A44A409AC5D5123C2D49409FA05E3AF7A44A40D39453F1352D494088307E1AF7A44A40
+70	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	212	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851796	0106000020E6100000010000000103000000010000000500000086BE0523402D4940ABAA3C26F7A44A40A461E75C402D49405AA4E430F3A44A40D6D2927D462D49407214C550F3A44A40B82FB143462D4940C31A1D46F7A44A4086BE0523402D4940ABAA3C26F7A44A40
+71	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	211	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851797	0106000020E6100000010000000103000000010000000500000016B6B0B8492D49407621B138F7A44A40335992F2492D4940241B5943F3A44A4066CA3D13502D4940D14A1064F3A44A4048275CD94F2D49408D919158F7A44A4016B6B0B8492D49407621B138F7A44A40
+72	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	210	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851798	0106000020E610000001000000010300000001000000050000000B8D710F532D494076F39E14F7A44A4029305349532D494024ED461FF3A44A405BA1FE69592D4940D11CFE3FF3A44A403EFE1C30592D49408D637F34F7A44A400B8D710F532D494076F39E14F7A44A40
+73	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	209	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851799	0106000020E61000000100000001030000000100000005000000185E49F25C2D49404641F0F8F6A44A4036012B2C5D2D4940F53A9803F3A44A406872D64C632D49400DAB7823F3A44A404ACFF412632D49405EB1D018F7A44A40185E49F25C2D49404641F0F8F6A44A40
+74	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	208	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851800	0106000020E61000000100000001030000000100000005000000C0C5D4A7662D4940B1AF2B1CF7A44A40DD68B6E1662D494060A9D326F3A44A40A59938036D2D49407819B446F3A44A4087F656C96C2D4940C91F0C3CF7A44A40C0C5D4A7662D4940B1AF2B1CF7A44A40
+75	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	207	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851801	0106000020E61000000100000001030000000100000005000000EA533310702D4940E766C92DF7A44A4008F7144A702D494095607138F3A44A403A68C06A762D4940ADD05158F3A44A401DC5DE30762D4940FED6A94DF7A44A40EA533310702D4940E766C92DF7A44A40
+76	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	89	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851802	0106000020E61000000100000001030000000100000005000000DC12149A7F2D4940C00FBD7B36A54A40FAB5F5D37F2D49406F09658632A54A402D27A1F4852D49401C391CA732A54A400F84BFBA852D4940D87F9D9B36A54A40DC12149A7F2D4940C00FBD7B36A54A40
+77	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	123	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851803	0106000020E61000000100000001030000000100000005000000A7B79AD07F2D494025427E912BA54A40C45A7C0A802D4940D43B269C27A54A40F7CB272B862D4940ECAB06BC27A54A406EE81CF2852D49403DB25EB12BA54A40A7B79AD07F2D494025427E912BA54A40
+78	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	88	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851804	0106000020E610000001000000010300000001000000050000005B159799882D4940E4B78DAB36A54A4079B878D3882D494093B135B632A54A40AB2924F48E2D4940AA2116D632A54A408D8642BA8E2D4940FC276ECB36A54A405B159799882D4940E4B78DAB36A54A40
+79	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	124	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851805	0106000020E6100000010000000103000000010000000500000012D32A9F8A2D4940DEA925C22BA54A4030760CD98A2D49408CA3CDCC27A54A4062E7B7F9902D4940A413AEEC27A54A404544D6BF902D4940F51906E22BA54A4012D32A9F8A2D4940DEA925C22BA54A40
+80	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	125	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851806	0106000020E610000001000000010300000001000000050000009C97D41A942D494090DECBD82BA54A40BA3AB654942D49403FD873E327A54A40EDAB61759A2D49405748540328A54A40CF08803B9A2D4940A84EACF82BA54A409C97D41A942D494090DECBD82BA54A40
+81	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	126	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851807	0106000020E61000000100000001030000000100000005000000088552C59E2D4940D8A436CC2BA54A40262834FF9E2D4940869EDED627A54A405899DF1FA52D494033CE95F727A54A403BF6FDE5A42D494084D4EDEC2BA54A40088552C59E2D4940D8A436CC2BA54A40
+82	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	127	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851808	0106000020E61000000100000001030000000100000005000000C185E1C8A82D4940A249BD022CA54A40DF28C302A92D49405143650D28A54A40129A6E23AF2D494068B3452D28A54A4089B663EAAE2D4940BAB99D222CA54A40C185E1C8A82D4940A249BD022CA54A40
+83	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	128	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851809	0106000020E61000000100000001030000000100000005000000FD023054B42D4940A8209AD42BA54A401BA6118EB42D4940571A42DF27A54A404D17BDAEBA2D49406F8A22FF27A54A402F74DB74BA2D4940C0907AF42BA54A40FD023054B42D4940A8209AD42BA54A40
+84	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	87	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851810	0106000020E61000000100000001030000000100000005000000976A0B74922D49406D11627836A54A40B50DEDAD922D49401C0B0A8332A54A407C3E6FCF982D4940337BEAA232A54A405F9B8D95982D49408581429836A54A40976A0B74922D49406D11627836A54A40
+85	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	86	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851811	0106000020E610000001000000010300000001000000050000002790C82D9C2D4940D8F5662F36A54A404533AA679C2D494087EF0E3A32A54A4077A45588A22D4940341FC65A32A54A405A01744EA22D4940F065474F36A54A402790C82D9C2D4940D8F5662F36A54A40
+86	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	85	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851812	0106000020E610000001000000010300000001000000050000001C959BA8A52D49404364A25236A54A403A387DE2A52D4940F25D4A5D32A54A400169FF03AC2D49400ACE2A7D32A54A40E4C51DCAAB2D49405BD4827236A54A401C959BA8A52D49404364A25236A54A40
+87	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	84	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851813	0106000020E61000000100000001030000000100000005000000FF14D8ADAF2D49408BFCFA2136A54A401DB8B9E7AF2D49403AF6A22C32A54A40E4E83B09B62D4940E6255A4D32A54A40C7455ACFB52D4940A36CDB4136A54A40FF14D8ADAF2D49408BFCFA2136A54A40
+88	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	82	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851814	0106000020E610000001000000010300000001000000050000006C223317B82D494055736F3436A54A401F85EB51B82D4940046D173F32A54A4051F69672BE2D49401CDDF75E32A54A403453B538BE2D49406DE34F5436A54A406C223317B82D494055736F3436A54A40
+89	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	134	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851815	0106000020E6100000010000000103000000010000000500000084296FEC7E2D4940BA1281EA1FA54A40A1CC50267F2D4940690C29F51BA54A4068FDD247852D4940153CE0151CA54A404B5AF10D852D49406742380B20A54A4084296FEC7E2D4940BA1281EA1FA54A40
+90	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	133	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851816	0106000020E610000001000000010300000001000000050000004FAF9465882D49409698C2DE1FA54A406D52769F882D494045926AE91BA54A409FC321C08E2D49405D024B091CA54A40812040868E2D4940AE08A3FE1FA54A404FAF9465882D49409698C2DE1FA54A40
+91	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	132	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851817	0106000020E6100000010000000103000000010000000500000015A6947C912D49402B5899DF1FA54A40C7084DB7912D4940DA5141EA1BA54A40FA79F8D7972D49408681F80A1CA54A40DCD6169E972D4940D887500020A54A4015A6947C912D49402B5899DF1FA54A40
+92	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	131	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851818	0106000020E610000001000000010300000001000000050000001CE846FD9A2D494013E8B8BF1FA54A403A8B28379B2D4940C2E160CA1BA54A4001BCAA58A12D4940DA5141EA1BA54A40E318C91EA12D49402B5899DF1FA54A401CE846FD9A2D494013E8B8BF1FA54A40
+93	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	130	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851819	0106000020E61000000100000001030000000100000005000000D0FD8B56A42D494073F0F1AE1FA54A40EDA06D90A42D494021EA99B91BA54A40B5D1EFB1AA2D4940395A7AD91BA54A40972E0E78AA2D49408B60D2CE1FA54A40D0FD8B56A42D494073F0F1AE1FA54A40
+94	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	129	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851820	0106000020E61000000100000001030000000100000005000000358AF6C2AE2D49403D9578E51FA54A40532DD8FCAE2D4940EC8E20F01BA54A401A5E5A1EB52D494098BED7101CA54A40FDBA78E4B42D49405505590520A54A40358AF6C2AE2D49403D9578E51FA54A40
+95	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	164	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851821	0106000020E610000001000000010300000001000000050000008471265C7E2D49402A2F432D17A54A40A11408967E2D4940D828EB3713A54A40D485B3B6842D4940F098CB5713A54A40B6E2D17C842D4940419F234D17A54A408471265C7E2D49402A2F432D17A54A40
+96	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	165	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851822	0106000020E6100000010000000103000000010000000500000097BDB6C8872D49400CBA731717A54A40B4609802882D4940BBB31B2213A54A407C911A248E2D494067E3D24213A54A405EEE38EA8D2D4940B9E92A3817A54A4097BDB6C8872D49400CBA731717A54A40
+97	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	166	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851823	0106000020E6100000010000000103000000010000000500000098E60C7B902D49405FE6E03E17A54A404B49C5B5902D49400EE0884913A54A407DBA70D6962D49402650696913A54A4060178F9C962D49407756C15E17A54A4098E60C7B902D49405FE6E03E17A54A40
+98	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	167	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851824	0106000020E6100000010000000103000000010000000500000023C55B42992D4940BFC0070A17A54A40D527147D992D49406DBAAF1413A54A400899BF9D9F2D4940852A903413A54A40EAF5DD639F2D4940D630E82917A54A4023C55B42992D4940BFC0070A17A54A40
+99	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	168	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851825	0106000020E610000001000000010300000001000000050000006B3E5354A22D4940D1CFD4EB16A54A4089E1348EA22D49407FC97CF612A54A40BC52E0AEA82D494097395D1613A54A409EAFFE74A82D4940E83FB50B17A54A406B3E5354A22D4940D1CFD4EB16A54A40
+100	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	169	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851826	0106000020E61000000100000001030000000100000005000000A39410ACAA2D494071F5AD2017A54A4055F7C8E6AA2D494020EF552B13A54A4088687407B12D4940385F364B13A54A406AC592CDB02D494089658E4017A54A40A39410ACAA2D494071F5AD2017A54A40
+101	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	174	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851827	0106000020E61000000100000001030000000100000005000000B3F5C2537E2D4940F4FE9A070BA54A40D198A48D7E2D4940A3F8421207A54A40040A50AE842D4940BB68233207A54A40E6666E74842D49400C6F7B270BA54A40B3F5C2537E2D4940F4FE9A070BA54A40
+102	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	173	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851828	0106000020E61000000100000001030000000100000005000000CDEA1D6E872D4940D1E000440BA54A40EA8DFFA7872D49407FDAA84E07A54A40B2BE81C98D2D4940974A896E07A54A40941BA08F8D2D4940E850E1630BA54A40CDEA1D6E872D4940D1E000440BA54A40
+103	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	172	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851829	0106000020E6100000010000000103000000010000000500000063015D45902D4940FA5FAE450BA54A4080A43E7F902D4940A959565007A54A4048D5C0A0962D4940C1C9367007A54A402A32DF66962D494012D08E650BA54A4063015D45902D4940FA5FAE450BA54A40
+104	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	171	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851830	0106000020E61000000100000001030000000100000005000000FF4A9D36992D4940E8F4BC1B0BA54A40B1AD5571992D494097EE642607A54A40E41E01929F2D4940441E1C4707A54A40C67B1F589F2D49409524743C0BA54A40FF4A9D36992D4940E8F4BC1B0BA54A40
+105	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	170	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851831	0106000020E61000000100000001030000000100000005000000A70E4D34A32D4940AD6642380BA54A40C4B12E6EA32D49405C60EA4207A54A40F722DA8EA92D494073D0CA6207A54A40D97FF854A92D4940C5D622580BA54A40A70E4D34A32D4940AD6642380BA54A40
+106	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	201	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851832	0106000020E610000001000000010300000001000000050000003DCED9A7882D4940DB65643502A54A40F03092E2882D49408A5F0C40FEA44A4022A23D038F2D4940A2CFEC5FFEA44A4004FF5BC98E2D4940F3D5445502A54A403DCED9A7882D4940DB65643502A54A40
+107	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	202	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851833	0106000020E610000001000000010300000001000000050000003834C060922D494070815F7E02A54A4056D7A19A922D49401F7B0789FEA44A4088484DBB982D494036EBE7A8FEA44A406BA56B81982D494088F13F9E02A54A403834C060922D494070815F7E02A54A40
+108	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	200	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851834	0106000020E6100000010000000103000000010000000500000089E6A6727F2D4940A0D7E95102A54A40A78988AC7F2D49404ED1915CFEA44A406EBA0ACE852D4940FB00497DFEA44A4050172994852D49404C07A17202A54A4089E6A6727F2D4940A0D7E95102A54A40
+109	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	203	443528	\N	улица Александровская Роща	\N	\N	\N	house	1	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851835	0106000020E6100000010000000103000000010000000500000003869B429D2D49404C07A17202A54A40B5E8537D9D2D4940FB00497DFEA44A40E859FF9DA32D49401371299DFEA44A40CAB61D64A32D49406477819202A54A4003869B429D2D49404C07A17202A54A40
+110	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	110	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851836	0106000020E610000001000000010300000001000000050000007EB1529CFE2C4940C0BE8C182CA54A400BCD1A61F62C4940C0BE8C182CA54A400BCD1A61F62C4940B0C1679027A54A40E9F17B9BFE2C49401B02918F27A54A407EB1529CFE2C4940C0BE8C182CA54A40
+111	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	109	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851837	0106000020E6100000010000000103000000010000000500000019E9A0A6F12C49406CC031152CA54A40A604696BE92C4940018008162CA54A401245926AE92C49405DC30C8D27A54A408429CAA5F12C49405DC30C8D27A54A4019E9A0A6F12C49406CC031152CA54A40
+112	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	146	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851838	0106000020E61000000100000001030000000100000005000000F0479BF4082D494090C1E50C20A54A407D6363B9002D494090C1E50C20A54A40E8A38CB8002D4940EC04EA831BA54A405B88C4F3082D4940EC04EA831BA54A40F0479BF4082D494090C1E50C20A54A40
+113	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	147	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851839	0106000020E6100000010000000103000000010000000500000096276B2FFD2C49402553AAE91FA54A40B8020AF5F42C4940BA1281EA1FA54A40234333F4F42C4940165685611BA54A4096276B2FFD2C4940165685611BA54A4096276B2FFD2C49402553AAE91FA54A40
+114	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	108	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851840	0106000020E610000001000000010300000001000000050000005B8D36D8E52C4940DD335C2E2CA54A40E8A8FE9CDD2C494072F3322F2CA54A40E8A8FE9CDD2C4940CE3637A627A54A405B8D36D8E52C4940CE3637A627A54A405B8D36D8E52C4940DD335C2E2CA54A40
+115	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	103	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851841	0106000020E6100000010000000103000000010000000500000050DAC0C2EE2C494050E449D235A54A40DDF58887E62C4940E4A320D335A54A404936B286E62C494040E7244A31A54A40BB1AEAC1EE2C494040E7244A31A54A4050DAC0C2EE2C494050E449D235A54A40
+116	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	104	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851842	0106000020E61000000100000001030000000100000005000000FD906DCFE22C4940D39453F135A54A408AAC3594DA2C4940D39453F135A54A40F5EC5E93DA2C4940C3972E6931A54A4068D196CEE22C49402ED8576831A54A40FD906DCFE22C4940D39453F135A54A40
+117	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	105	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851843	0106000020E61000000100000001030000000100000005000000F85A2B35D62C4940F66A364536A54A408576F3F9CD2C4940F66A364536A54A408576F3F9CD2C4940E76D11BD31A54A40F85A2B35D62C494052AE3ABC31A54A40F85A2B35D62C4940F66A364536A54A40
+118	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	148	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851844	0106000020E610000001000000010300000001000000050000008A00A777F12C4940731E04D31FA54A40181C6F3CE92C4940731E04D31FA54A40835C983BE92C4940CE61084A1BA54A40F640D076F12C4940CE61084A1BA54A408A00A777F12C4940731E04D31FA54A40
+119	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	107	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851845	0106000020E61000000100000001030000000100000005000000F0BF95ECD82C494072F3322F2CA54A4046EA3D95D32C49408A35012B2CA54A4040E54E9FD32C4940F2B0F5B127A54A40EABAA6F6D82C4940DA6E27B627A54A40F0BF95ECD82C494072F3322F2CA54A40
+120	2026-02-15 15:56:21+00	1	178588319	PolinaKarpacheva	23827081	Петра Дубрава	\N	\N	149	443528	\N	улица Александровская Роща	\N	\N	\N	house	2	\N	\N	\N	\N	terrace	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1478851846	0106000020E61000000100000001030000000100000005000000EA8FD552E52C4940D23AAA9A20A54A4040BA7DFBDF2C494055BDA19520A54A403AB58E05E02C4940BC38961C1CA54A40E48AE65CE52C4940A4F6C7201CA54A40EA8FD552E52C4940D23AAA9A20A54A40
+121	2021-12-16 05:28:36+00	6	114988044	lamax	1860634	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	1520	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	rail	spur	\N	\N	\N	\N	\N	way/42467796	0105000020E610000001000000010200000023000000EC81FBA6552C4940864E1949CCA34A40D06053E7512C494090B1248ADAA34A40650CBD0F512C49408C26BCA9EDA34A40071335875A2C4940BFFC0406FFA34A4094F2FF4F6A2C49407C94B65D0DA44A40784DA3247F2C4940DB5DB1D018A44A4076E8AA2F012D4940E63114C149A44A403BF0202C192D4940D52BC0D254A44A40B30A9B012E2D494045E4AA6862A44A4018BFDF1E3A2D49405C9F83786EA44A404A78E7F5CC2D49407B0F3C6304A54A402515D742DA2D494089C1B28817A54A40EBF76981E22D494008A5D4CA29A54A4066CBA8E8FE2D494004A337818EA54A40134FD1EC152E49401008CFDFDFA54A40116C01463C2E494072E0D57267A64A405F6633E25D2E494018192EBCDCA64A4017FF2DB76A2E4940F58E09E709A74A40ECC781B2842E49403B95C2723AA74A40F6C5EFB7872E4940232823D346A74A4035EB8CEF8B2E4940D7B672405CA74A4095B146E28A2E494082E3326E6AA74A4021AD31E8842E4940D9C3A8B57AA74A40003CA242752E494008DE358D92A74A40F573F9C55B2E4940C75FFF1AB5A74A406DC9AA08372E4940AD99C640E8A74A40536639BF172E49402564D64114A84A40DF6124C5112E4940CEEB3EB61BA84A4031F5A919082E4940B7E6334525A84A40DA56B3CEF82D49405885178E31A84A40BD3AC780EC2D49405A2A6F4738A84A4065822BEADD2D4940BD0B4A873DA84A40D3612AA2CB2D4940DE8D058541A84A40425BCEA5B82D49401FED24C742A84A404A404CC2852D4940EEB83C3146A84A40
+122	2025-07-30 21:44:18+00	4	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	service	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/225092966	0105000020E61000000100000001020000000F000000EB419CE2CC2C4940E0B254281CA54A4029081EDFDE2C49401DD434DE0CA54A403D80457EFD2C4940D2F1E20EE5A44A40C4995FCD012D4940E5733804D8A44A40BA06C776082D494081690712CAA44A40A0562CD90C2D4940610D6146C2A44A40B1451CFC0E2D4940BAD91F28B7A44A40CE2A7D32102D4940ED1978A4B0A44A40CE4763FE1B2D4940453C235BA7A44A4032772D211F2D494032F092EE9DA44A405BAE23B31F2D4940FF36305E98A44A404E14D7E7202D49403B32FBE18CA44A4069E78FC4262D494024D97E8D7FA44A404754A86E2E2D494034A5507177A44A40DBABEA40312D49408B4BFA2070A44A40
+123	2019-07-15 22:19:38+00	1	72281696	aodwonder	3267434	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	track	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/704704808	0105000020E61000000100000001020000000600000001F73C7FDA2B49402C1F93D629A54A402EC0E380022C49400272D3B029A54A404CFA7B293C2C4940224F37F526A54A40ED7607C25F2C49400C1F115322A54A40411251A7972C4940A154B1E721A54A40EB419CE2CC2C4940E0B254281CA54A40
+124	2025-07-30 21:44:18+00	4	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	track	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/704704813	0105000020E610000001000000010200000002000000E9FF0BBA732C4940CAB95EE4AFA44A40EB419CE2CC2C4940E0B254281CA54A40
+125	2025-07-30 21:44:18+00	5	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	track	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/737392352	0105000020E610000001000000010200000003000000BD2DA237262D4940BA6F1008CFA44A4063E5E14E332D4940F6076FB488A44A404754A86E2E2D494034A5507177A44A40
+126	2020-05-09 14:04:33+00	1	84939165	altoing	621535	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	track	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/801942120	0105000020E610000001000000010200000008000000B895B954002E49406281542F64A54A4074B91C0AFA2D49407F49CF9959A54A40521443CDEB2D4940B687180A33A54A4030A3B327DC2D494068452FFE11A54A40687AE46ABF2D4940B4F51D0DF1A44A40713AC956972D4940FE767EF6C8A44A409C85E2337E2D494078ADCE7BADA44A40615BF56F4D2D4940524832AB77A44A40
+127	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	1	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	line	\N	\N	\N	\N	35000	\N	\N	way/970862825	0105000020E61000000100000001020000001B000000233DFB80F6304940F635DC91FBA24A40A96CB30CCC304940ABC2B00D26A34A408071BA76B33049405863BFDD48A34A40F9201510A4304940C12D69D663A34A40743A353C623049401A3C026ECCA34A40D539ABAA3C304940D5EAABAB02A44A40E881340818304940C56A984638A44A40135A7B44F12F494050F1C9D46EA44A4093D4F83BCA2F4940692CABFAA6A44A40427D2656A12F49400911154FE2A44A40BD0ADFB18E2F4940D2E3F736FDA44A4087365BD4822F49408A7CF20B0AA54A40D809D407372F4940FC74971F13A54A40F0749DFCCC2E4940C05F27501FA54A40FDA776E1622E494007FBC09F2BA54A40BA70D696F02D4940E3C5C21039A54A40ADEEA2F9AD2D49400A19236D3EA54A40D047742A742D4940F55F8CED5AA54A40B0952B17852D4940E22EB1E88CA54A40CCD3B9A2942D4940D1BCD2E8C4A54A40901A6E1BA12D4940838B70EE0AA64A400835E8F0B52D494075FAE6A331A64A40E8E4FB98C52D49404242942F68A64A40395E262FD72D4940ADFFCE51A2A64A40B68883DFE12D494076AD1809C8A64A40A2708797F12D49402C1B8CC7FBA64A4065D9DD4D012E4940F25D4A5D32A74A40
+128	2025-07-30 21:44:18+00	2	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	residential	\N	\N	улица Александровская Роща	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1012656336	0105000020E610000001000000010200000005000000F258D878552D49405924DC1AC7A54A4046DE2868492D494066DAFE9595A54A40A68D34023B2D49407944E0A359A54A40D75FC0DC382D4940E754320054A54A4033614557332D49404D8AEA083BA54A40
+129	2025-07-30 21:44:18+00	2	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	residential	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1012656337	0105000020E61000000100000001020000000400000068565B56062D4940F3E2C4573BA54A408845B181192D49402BED1EEA88A54A40D9791B9B1D2D494052A51C8299A54A401829EF3E222D4940AE84494CABA54A40
+130	2026-02-15 15:56:21+00	3	178588319	PolinaKarpacheva	23827081	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	unclassified	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1012656340	0105000020E610000001000000010200000017000000CF31207BBD2D494024F7CF2E3AA54A404B557F29A82D494077233D563AA54A409E071CAE7A2D49409BF91FAA3AA54A40FB021F285C2D494017A53AD33AA54A4033614557332D49404D8AEA083BA54A4068565B56062D4940F3E2C4573BA54A401025B5ABEB2C4940DCA0F65B3BA54A40583849F3C72C4940591EFF603BA54A406B025658BA2C4940175D83633BA54A405C397B67B42C4940AC1C5A643BA54A408720BD97B12C4940AC1C5A643BA54A406968A8F68E2C4940E118B8F248A54A40D86C40DF712C4940CA9DE3ED52A54A403D15CB88662C4940C891730756A54A40AB8CEB843C2C49406C48371D5CA54A40E47DC1131F2C4940CFE7926060A54A4001231E3F0A2C494092393BBE62A54A40C5D0A057F22B494050BA3EBD63A54A4052E630A9EB2B494080E2B66C63A54A40F522241CC42B4940ECB886BE60A54A4063A93F0CBE2B4940E7FB4E3860A54A40301E94E6452B494034F5BA4560A54A403EC10F18352B49408797F10060A54A40
+131	2025-07-30 21:44:18+00	1	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	living_street	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1418767601	0105000020E610000001000000010200000004000000EFC517EDF12C4940044477FF0EA54A40E16822C7312D4940AB402D060FA54A40EBBE08BF792D4940E77283A10EA54A40A27A6B60AB2D4940BD0743780FA54A40
+132	2025-07-30 21:44:18+00	1	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	living_street	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1418767602	0105000020E61000000100000001020000000400000032AF230ED92C49400CBDB49723A54A4010EDBEBE312D494006007D1123A54A403F479A2E7A2D494006007D1123A54A408F4E0240BA2D494059FED71423A54A40
+133	2025-07-30 21:44:18+00	1	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	living_street	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1418767603	0105000020E610000001000000010200000004000000B7312C35312D49406A64FCA0D3A44A40E16822C7312D4940AB402D060FA54A4010EDBEBE312D494006007D1123A54A4033614557332D49404D8AEA083BA54A40
+134	2025-07-30 21:44:18+00	1	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	living_street	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	way/1418767604	0105000020E6100000010000000102000000060000009E071CAE7A2D49409BF91FAA3AA54A403F479A2E7A2D494006007D1123A54A40EBBE08BF792D4940E77283A10EA54A405C6045FC792D4940BC8800F104A54A40EB1A2D077A2D494079C9FFE4EFA44A40094E7D20792D494029EB3713D3A44A40
+135	2019-10-03 08:33:47+00	4	75217940	lamax	1860634	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	yes	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	level_crossing	\N	\N	\N	\N	\N	\N	node/529398492	0104000020E6100000010000000101000000116C01463C2E494072E0D57267A64A40
+136	2013-06-10 12:04:42+00	3	16494999	pfg21	717210	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	level_crossing	\N	\N	\N	\N	\N	\N	node/1040272126	0104000020E610000001000000010100000018BFDF1E3A2D49405C9F83786EA44A40
+137	2019-10-03 08:01:13+00	3	75216230	lamax	1860634	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	level_crossing	\N	\N	\N	\N	\N	\N	node/2339175029	0104000020E610000001000000010100000066CBA8E8FE2D494004A337818EA54A40
+138	2021-02-27 13:01:48+00	1	100096850	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8463615050	0104000020E6100000010000000101000000233DFB80F6304940F635DC91FBA24A40
+139	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985378300	0104000020E610000001000000010100000065D9DD4D012E4940F25D4A5D32A74A40
+140	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389832	0104000020E6100000010000000101000000A2708797F12D49402C1B8CC7FBA64A40
+141	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389833	0104000020E6100000010000000101000000B68883DFE12D494076AD1809C8A64A40
+142	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389834	0104000020E6100000010000000101000000395E262FD72D4940ADFFCE51A2A64A40
+143	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389835	0104000020E6100000010000000101000000E8E4FB98C52D49404242942F68A64A40
+144	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389836	0104000020E61000000100000001010000000835E8F0B52D494075FAE6A331A64A40
+145	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389837	0104000020E6100000010000000101000000901A6E1BA12D4940838B70EE0AA64A40
+146	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389838	0104000020E6100000010000000101000000CCD3B9A2942D4940D1BCD2E8C4A54A40
+147	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389839	0104000020E6100000010000000101000000B0952B17852D4940E22EB1E88CA54A40
+148	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389840	0104000020E6100000010000000101000000D047742A742D4940F55F8CED5AA54A40
+149	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389841	0104000020E6100000010000000101000000ADEEA2F9AD2D49400A19236D3EA54A40
+150	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389842	0104000020E6100000010000000101000000BA70D696F02D4940E3C5C21039A54A40
+151	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389843	0104000020E6100000010000000101000000FDA776E1622E494007FBC09F2BA54A40
+152	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389844	0104000020E6100000010000000101000000F0749DFCCC2E4940C05F27501FA54A40
+153	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389845	0104000020E610000001000000010100000087365BD4822F49408A7CF20B0AA54A40
+154	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389846	0104000020E6100000010000000101000000D809D407372F4940FC74971F13A54A40
+155	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389847	0104000020E6100000010000000101000000427D2656A12F49400911154FE2A44A40
+156	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389848	0104000020E610000001000000010100000093D4F83BCA2F4940692CABFAA6A44A40
+157	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389849	0104000020E6100000010000000101000000135A7B44F12F494050F1C9D46EA44A40
+158	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389850	0104000020E6100000010000000101000000E881340818304940C56A984638A44A40
+159	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389851	0104000020E6100000010000000101000000D539ABAA3C304940D5EAABAB02A44A40
+160	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389852	0104000020E6100000010000000101000000743A353C623049401A3C026ECCA34A40
+161	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389853	0104000020E6100000010000000101000000F9201510A4304940C12D69D663A34A40
+162	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389854	0104000020E61000000100000001010000008071BA76B33049405863BFDD48A34A40
+163	2021-08-06 09:51:45+00	1	109249739	Vladimir_022	12478094	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	tower	\N	\N	\N	\N	\N	\N	\N	node/8985389855	0104000020E6100000010000000101000000A96CB30CCC304940ABC2B00D26A34A40
+164	2021-12-16 05:28:36+00	1	114988044	lamax	1860634	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	crossing	\N	\N	\N	\N	\N	\N	node/9342558546	0104000020E6100000010000000101000000134FD1EC152E49401008CFDFDFA54A40
+165	2025-07-30 21:44:18+00	1	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	gate	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	node/13038137000	0104000020E6100000010000000101000000D75FC0DC382D4940E754320054A54A40
+166	2025-07-30 21:44:18+00	1	169742849	Jekader	48157	\N	\N	\N	\N	\N	\N	\N	\N	gate	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	node/13038156017	0104000020E61000000100000001010000005C397B67B42C4940AC1C5A643BA54A40
+\.
+
+
+--
+-- Name: metadata_id_seq; Type: SEQUENCE SET; Schema: ogr_system_tables; Owner: gisuser
+--
+
+SELECT pg_catalog.setval('ogr_system_tables.metadata_id_seq', 1, true);
+
+
+--
+-- Name: buildings_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gisuser
+--
+
+SELECT pg_catalog.setval('public.buildings_id_seq', 111, true);
+
+
+--
+-- Name: pois_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gisuser
+--
+
+SELECT pg_catalog.setval('public.pois_id_seq', 34, true);
+
+
+--
+-- Name: roads_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gisuser
+--
+
+SELECT pg_catalog.setval('public.roads_id_seq', 12, true);
+
+
+--
+-- Name: tmp_layer_ogc_fid_seq; Type: SEQUENCE SET; Schema: public; Owner: gisuser
+--
+
+SELECT pg_catalog.setval('public.tmp_layer_ogc_fid_seq', 166, true);
+
+
+--
+-- Name: metadata metadata_schema_name_table_name_key; Type: CONSTRAINT; Schema: ogr_system_tables; Owner: gisuser
+--
+
+ALTER TABLE ONLY ogr_system_tables.metadata
+    ADD CONSTRAINT metadata_schema_name_table_name_key UNIQUE (schema_name, table_name);
+
+
+--
+-- Name: buildings buildings_pkey; Type: CONSTRAINT; Schema: public; Owner: gisuser
+--
+
+ALTER TABLE ONLY public.buildings
+    ADD CONSTRAINT buildings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: pois pois_pkey; Type: CONSTRAINT; Schema: public; Owner: gisuser
+--
+
+ALTER TABLE ONLY public.pois
+    ADD CONSTRAINT pois_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: roads roads_pkey; Type: CONSTRAINT; Schema: public; Owner: gisuser
+--
+
+ALTER TABLE ONLY public.roads
+    ADD CONSTRAINT roads_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tmp_layer tmp_layer_pkey; Type: CONSTRAINT; Schema: public; Owner: gisuser
+--
+
+ALTER TABLE ONLY public.tmp_layer
+    ADD CONSTRAINT tmp_layer_pkey PRIMARY KEY (ogc_fid);
+
+
+--
+-- Name: idx_buildings_geom; Type: INDEX; Schema: public; Owner: gisuser
+--
+
+CREATE INDEX idx_buildings_geom ON public.buildings USING gist (geom);
+
+
+--
+-- Name: idx_pois_geom; Type: INDEX; Schema: public; Owner: gisuser
+--
+
+CREATE INDEX idx_pois_geom ON public.pois USING gist (geom);
+
+
+--
+-- Name: idx_roads_geom; Type: INDEX; Schema: public; Owner: gisuser
+--
+
+CREATE INDEX idx_roads_geom ON public.roads USING gist (geom);
+
+
+--
+-- Name: tmp_layer_geom_geom_idx; Type: INDEX; Schema: public; Owner: gisuser
+--
+
+CREATE INDEX tmp_layer_geom_geom_idx ON public.tmp_layer USING gist (geom);
+
+
+--
+-- Name: ogr_system_tables_event_trigger_for_metadata; Type: EVENT TRIGGER; Schema: -; Owner: gisuser
+--
+
+CREATE EVENT TRIGGER ogr_system_tables_event_trigger_for_metadata ON sql_drop
+   EXECUTE FUNCTION ogr_system_tables.event_trigger_function_for_metadata();
+
+
+ALTER EVENT TRIGGER ogr_system_tables_event_trigger_for_metadata OWNER TO gisuser;
+
+--
+-- PostgreSQL database dump complete
+--
+
