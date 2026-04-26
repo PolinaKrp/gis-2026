@@ -8,55 +8,54 @@ import ImageWMS from 'ol/source/ImageWMS';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
 import GeoJSON from 'ol/format/GeoJSON';
-import {applyStyle} from 'ol-mapbox-style';
+import Style from 'ol/style/Style';
+import Fill from 'ol/style/Fill';
+import Stroke from 'ol/style/Stroke';
 
+// 1. БАЗОВЫЙ СЛОЙ
 const baseLayer = new TileLayer({
   source: new XYZ({
     url: 'https://{a-c}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
     attributions: '© OpenStreetMap contributors, © CartoDB'
   }),
-  opacity: 1.0
+  zIndex: 0
 });
 
+// 2. СЛОИ ИЗ ЛР2
 const buildingsLayer = new ImageLayer({
   source: new ImageWMS({
     url: 'http://localhost:8080/geoserver/gis/wms',
-    params: {
-      'LAYERS': 'gis:buildings',
-      'TILED': true,
-      'TRANSPARENT': true
-    },
+    params: { 'LAYERS': 'gis:buildings', 'TILED': true, 'TRANSPARENT': true },
     ratio: 1,
     serverType: 'geoserver'
-  })
+  }),
+  opacity: 0.6,  
+  zIndex: 1
 });
 
 const roadsLayer = new ImageLayer({
   source: new ImageWMS({
     url: 'http://localhost:8080/geoserver/gis/wms',
-    params: {
-      'LAYERS': 'gis:roads',
-      'TILED': true,
-      'TRANSPARENT': true
-    },
+    params: { 'LAYERS': 'gis:roads', 'TILED': true, 'TRANSPARENT': true },
     ratio: 1,
     serverType: 'geoserver'
-  })
+  }),
+  opacity: 0.7,
+  zIndex: 2
 });
 
 const poisLayer = new ImageLayer({
   source: new ImageWMS({
     url: 'http://localhost:8080/geoserver/gis/wms',
-    params: {
-      'LAYERS': 'gis:pois',
-      'TILED': true,
-      'TRANSPARENT': true
-    },
+    params: { 'LAYERS': 'gis:pois', 'TILED': true, 'TRANSPARENT': true },
     ratio: 1,
     serverType: 'geoserver'
-  })
+  }),
+  opacity: 1.0,
+  zIndex: 3
 });
 
+// 3. КАРТА
 const map = new Map({
   target: 'map',
   layers: [
@@ -71,68 +70,42 @@ const map = new Map({
   })
 });
 
-// ЛР3: Векторный слой с ol-mapbox-style
-
-// Векторный источник
+// 4. СЛОЙ OVERTURE ЛР3
 const overtureSource = new VectorSource({
   url: './overture.geojson',
   format: new GeoJSON()
 });
 
-// Векторный слой
+function getOvertureStyle(feature) {
+  const type = feature.get('source_type');
+  let color = 'rgba(158,158,158,0.4)';
+  
+  if (type === 'my') color = 'rgba(76,175,80,0.85)';     
+  else if (type === 'osm') color = 'rgba(33,150,243,0.85)'; 
+  else if (type === 'ml') color = 'rgba(255,152,0,0.85)';   
+  
+  return new Style({
+    fill: new Fill({ color }),
+    stroke: new Stroke({ color: '#222', width: 1.5 })  
+  });
+}
+
 const overtureLayer = new VectorLayer({
   source: overtureSource,
-  zIndex: 20
+  style: getOvertureStyle,
+  zIndex: 100  
 });
-
-const mapboxStyle = {
-  "version": 8,
-  "sources": {
-    "overture": {
-      "type": "geojson",
-      "data": "./overture.geojson"
-    }
-  },
-  "layers": [
-    {
-      "id": "overture-fill",
-      "type": "fill",
-      "source": "overture",
-      "paint": {
-        "fill-color": [
-          "match",
-          ["get", "source_type"],
-          "my", "rgba(76, 175, 80, 0.7)",      
-          "osm", "rgba(33, 150, 243, 0.7)",    
-          "ml", "rgba(255, 152, 0, 0.7)",      
-          "rgba(158, 158, 158, 0.4)"           
-        ],
-        "fill-outline-color": "#333333"
-      }
-    }
-  ]
-};
-
-// Применяем Mapbox Style к слою
-applyStyle(overtureLayer, mapboxStyle);
 
 map.addLayer(overtureLayer);
 
-// Попап при клике
+// 5. КЛИК
 map.on('singleclick', function(evt) {
-  const feature = map.forEachFeatureAtPixel(evt.pixel, function(f) {
-    return f.get('source_type') ? f : null;
-  });
+  const feature = map.forEachFeatureAtPixel(evt.pixel, f => 
+    f.get('source_type') ? f : null
+  );
   
   if (feature) {
     const p = feature.getProperties();
-    const content = `
-      Здание
-      Источник: ${p.source_type}
-      ID: ${p.id}
-      ${p.name ? `Название: ${p.name}` : ''}
-      ${p.height ? `Высота: ${p.height} м` : ''}
-    `;
-    alert(content.trim());
+    alert(`${p.source_type?.toUpperCase()}\nID: ${p.id}\n${p.name || ''}`.trim());
   }
 });
