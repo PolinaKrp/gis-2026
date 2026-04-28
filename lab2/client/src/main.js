@@ -76,17 +76,40 @@ map.on('singleclick', (evt) => {
   const feature = map.forEachFeatureAtPixel(evt.pixel, f => f);
   if (feature) {
     const props = feature.getProperties();
-        
+    
+    let html = '<div style="font-family: monospace; max-width: 400px;">';
+    html += '<h3>Информация об объекте</h3><hr>';
+    
     for (const [key, value] of Object.entries(props)) {
       if (key === 'geometry' || typeof value === 'function') continue;
-      
-      let displayValue = value;
-      if (value === undefined || value === null) displayValue = '—';
-      if (typeof value === 'object') displayValue = JSON.stringify(value);
-      
-      info += `${key}: ${displayValue}\n`;
+      let val = (value === undefined || value === null) ? '—' : value;
+      if (typeof val === 'object') val = JSON.stringify(val);
+      html += `<b>${key}:</b> ${val}<br>`;
     }
     
-    alert(info);
+    html += '</div>';
+    
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    div.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      z-index: 1000;
+      max-width: 90%;
+      max-height: 80%;
+      overflow: auto;
+    `;
+    
+    document.body.appendChild(div);
+    
+    setTimeout(() => {
+      div.addEventListener('click', () => div.remove());
+    }, 100);
   }
 });
