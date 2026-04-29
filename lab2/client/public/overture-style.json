@@ -14,11 +14,12 @@
       "fill-color": [
         "match",
         ["get", "source_type"],
-        "my", "rgba(76, 175, 80, 0.85)",
-        "osm", "rgba(33, 150, 243, 0.85)",
-        "ml", "rgba(255, 152, 0, 0.85)",
-        "rgba(158, 158, 158, 0.4)"
+        "my", "#4caf50",
+        "osm", "#2196f3",
+        "ml", "#ff9800",
+        "#9e9e9e"
       ],
+      "fill-opacity": 0.8,
       "fill-outline-color": "#222",
       "fill-outline-width": 1.5
     }
