@@ -69,8 +69,3 @@ map.on('singleclick', function(evt) {
     setTimeout(() => div.addEventListener('click', () => div.remove()), 100);
   }
 });
-
-// Для отладки: выводим количество загруженных объектов
-overtureLayer.getSource().once('featuresloadend', () => {
-  console.log('Загружено объектов:', overtureLayer.getSource().getFeatures().length);
-});
